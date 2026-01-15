@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SUDOKU - God's Plan</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Estilos -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050000;
+            color: white;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Bordes personalizados para la rejilla de Sudoku */
+        .sudoku-cell {
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .sudoku-cell:nth-child(3n) { border-right: 2px solid rgba(220, 38, 38, 0.6); }
+        .sudoku-cell:nth-child(9n) { border-right: none; }
+        .sudoku-row:nth-child(3n) .sudoku-cell { border-bottom: 2px solid rgba(220, 38, 38, 0.6); }
+        .sudoku-row:last-child .sudoku-cell { border-bottom: none; }
+
+        .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes pop {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // --- Lógica de Sudoku ---
+        const BLANK = 0;
+        
+        const isValid = (board, row, col, num) => {
+            for (let i = 0; i < 9; i++) {
+                if (board[row][i] === num && i !== col) return false;
+                if (board[i][col] === num && i !== row) return false;
+                const boxRow = 3 * Math.floor(row / 3) + Math.floor(i / 3);
+                const boxCol = 3 * Math.floor(col / 3) + i % 3;
+                if (board[boxRow][boxCol] === num && (boxRow !== row || boxCol !== col)) return false;
+            }
+            return true;
+        };
+
+        const solveSudoku = (board) => {
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (board[row][col] === BLANK) {
+                        for (let num = 1; num <= 9; num++) {
+                            if (isValid(board, row, col, num)) {
+                                board[row][col] = num;
+                                if (solveSudoku(board)) return true;
+                                board[row][col] = BLANK;
+                            }
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true;
+        };
+
+        const generateSudoku = (difficulty) => {
+            const board = Array.from({ length: 9 }, () => Array(9).fill(BLANK));
+            for (let i = 0; i < 9; i = i + 3) fillBox(board, i, i);
+            solveSudoku(board);
+            const solution = board.map(row => [...row]);
+
+            // Dificultad: Cuantos huecos vacíos
+            let attempts = 30; // Easy
+            if (difficulty === 'medium') attempts = 45;
+            if (difficulty === 'hard') attempts = 58;
+
+            let count = attempts;
+            while (count > 0) {
+                let row = Math.floor(Math.random() * 9);
+                let col = Math.floor(Math.random() * 9);
+                while (board[row][col] === BLANK) {
+                    row = Math.floor(Math.random() * 9);
+                    col = Math.floor(Math.random() * 9);
+                }
+                board[row][col] = BLANK;
+                count--;
+            }
+            return { initial: board, solution };
+        };
+
+        const fillBox = (board, rowStart, colStart) => {
+            let num;
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    do { num = Math.floor(Math.random() * 9) + 1; } 
+                    while (!isSafeInBox(board, rowStart, colStart, num));
+                    board[rowStart + i][colStart + j] = num;
+                }
+            }
+        };
+
+        const isSafeInBox = (board, rowStart, colStart, num) => {
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (board[rowStart + i][colStart + j] === num) return false;
+                }
+            }
+            return true;
+        };
+
+        // --- Componente Principal ---
+
+        function CrimsonSudoku() {
+            // Juego
+            const [grid, setGrid] = useState([]);
+            const [initialGrid, setInitialGrid] = useState([]);
+            const [solution, setSolution] = useState([]);
+            const [notes, setNotes] = useState(Array.from({length: 9}, () => Array.from({length: 9}, () => new Set())));
+            
+            // UI & Estado
+            const [selected, setSelected] = useState(null);
+            const [difficulty, setDifficulty] = useState('easy');
+            const [mistakes, setMistakes] = useState(0);
+            const [time, setTime] = useState(0);
+            const [isNoteMode, setIsNoteMode] = useState(false);
+            const [history, setHistory] = useState([]);
+            const [gameState, setGameState] = useState('menu'); // menu, playing, won, gameover
+            const [currentDate, setCurrentDate] = useState(new Date());
+
+            // Inicializar reloj
+            useEffect(() => {
+                const timer = setInterval(() => setCurrentDate(new Date()), 1000);
+                return () => clearInterval(timer);
+            }, []);
+
+            // Timer Juego
+            useEffect(() => {
+                let interval;
+                if (gameState === 'playing') {
+                    interval = setInterval(() => setTime(t => t + 1), 1000);
+                }
+                return () => clearInterval(interval);
+            }, [gameState]);
+
+            // --- Lógica del Teclado ---
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    // Cerrar menús con ESC
+                    if (e.key === 'Escape') {
+                        if (gameState === 'menu') return; // Si estamos en el menú principal, no hacer nada
+                        // Podríamos implementar pausa aquí
+                        return;
+                    }
+
+                    if (gameState !== 'playing') return;
+
+                    // Navegación (Flechas + WASD)
+                    if (selected) {
+                        const { row, col } = selected;
+                        let newRow = row;
+                        let newCol = col;
+
+                        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') newRow = (row - 1 + 9) % 9;
+                        if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') newRow = (row + 1) % 9;
+                        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') newCol = (col - 1 + 9) % 9;
+                        if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') newCol = (col + 1) % 9;
+                        
+                        if (newRow !== row || newCol !== col) {
+                            e.preventDefault(); // Evitar scroll con flechas
+                            setSelected({ row: newRow, col: newCol });
+                        }
+                    }
+
+                    // Acciones
+                    if (e.key >= '1' && e.key <= '9') handleNumberInput(parseInt(e.key));
+                    if (e.key === 'Backspace' || e.key === 'Delete') handleErase();
+                    if (e.key === 'n' || e.key === 'N') setIsNoteMode(prev => !prev);
+                    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) handleUndo();
+                };
+
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [selected, gameState, isNoteMode, grid, notes]);
+
+            const startNewGame = (diff) => {
+                setDifficulty(diff);
+                const { initial, solution: sol } = generateSudoku(diff);
+                setInitialGrid(initial.map(row => [...row]));
+                setGrid(initial.map(row => [...row]));
+                setSolution(sol);
+                setNotes(Array.from({length: 9}, () => Array.from({length: 9}, () => new Set())));
+                setMistakes(0);
+                setTime(0);
+                setHistory([]);
+                setGameState('playing');
+                setSelected({row: 4, col: 4}); // Empezar en el centro
+            };
+
+            const handleNumberInput = (num) => {
+                if (!selected || gameState !== 'playing') return;
+                const { row, col } = selected;
+                if (initialGrid[row][col] !== BLANK) return;
+
+                if (isNoteMode) {
+                    const newNotes = notes.map(r => r.map(c => new Set(c)));
+                    const cellNotes = newNotes[row][col];
+                    if (cellNotes.has(num)) cellNotes.delete(num);
+                    else cellNotes.add(num);
+                    setNotes(newNotes);
+                } else {
+                    if (grid[row][col] === num) return;
+
+                    setHistory(prev => [...prev, {
+                        grid: grid.map(r => [...r]),
+                        notes: notes.map(r => r.map(c => new Set(c))),
+                        mistakes
+                    }]);
+
+                    const newGrid = grid.map(r => [...r]);
+                    newGrid[row][col] = num;
+                    setGrid(newGrid);
+
+                    // Validar Movimiento
+                    if (num !== solution[row][col]) {
+                        const newMistakes = mistakes + 1;
+                        setMistakes(newMistakes);
+                        if (newMistakes >= 3) {
+                            setGameState('gameover');
+                        }
+                    } else {
+                         // Limpiar notas automáticamente
+                         const newNotes = notes.map(r => r.map(c => new Set(c)));
+                         for(let i=0; i<9; i++) { newNotes[row][i].delete(num); newNotes[i][col].delete(num); }
+                         const boxRow = 3 * Math.floor(row/3);
+                         const boxCol = 3 * Math.floor(col/3);
+                         for(let i=0; i<3; i++) for(let j=0; j<3; j++) newNotes[boxRow+i][boxCol+j].delete(num);
+                         setNotes(newNotes);
+                        checkWin(newGrid);
+                    }
+                }
+            };
+
+            const handleErase = () => {
+                if (!selected || gameState !== 'playing') return;
+                const { row, col } = selected;
+                if (initialGrid[row][col] !== BLANK) return;
+
+                setHistory(prev => [...prev, {
+                    grid: grid.map(r => [...r]),
+                    notes: notes.map(r => r.map(c => new Set(c))),
+                    mistakes
+                }]);
+
+                const newGrid = grid.map(r => [...r]);
+                newGrid[row][col] = BLANK;
+                setGrid(newGrid);
+            };
+
+            const handleUndo = () => {
+                if (history.length === 0) return;
+                const lastState = history[history.length - 1];
+                setGrid(lastState.grid);
+                setNotes(lastState.notes);
+                setMistakes(lastState.mistakes);
+                setHistory(prev => prev.slice(0, -1));
+            };
+
+            const checkWin = (currentGrid) => {
+                for (let i = 0; i < 9; i++) {
+                    for (let j = 0; j < 9; j++) {
+                        if (currentGrid[i][j] !== solution[i][j]) return;
+                    }
+                }
+                setGameState('won');
+            };
+
+            const formatTime = (seconds) => {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+            };
+
+            const getCellClass = (row, col) => {
+                const val = grid[row][col];
+                const isInit = initialGrid[row][col] !== BLANK;
+                const isSel = selected?.row === row && selected?.col === col;
+                const isErr = val !== BLANK && val !== solution[row][col];
+                
+                const selVal = selected ? grid[selected.row][selected.col] : null;
+                const isSameNum = val !== BLANK && selVal === val;
+                const isRelated = selected && (selected.row === row || selected.col === col || 
+                                (Math.floor(selected.row/3) === Math.floor(row/3) && Math.floor(selected.col/3) === Math.floor(col/3)));
+
+                let classes = "sudoku-cell w-full h-full flex items-center justify-center relative text-lg sm:text-xl font-bold transition-colors cursor-pointer ";
+                
+                if (isSel) classes += "bg-red-600/40 text-white shadow-[inset_0_0_10px_rgba(255,0,0,0.5)] ";
+                else if (isErr) classes += "bg-red-900/50 text-red-200 ";
+                else if (isSameNum) classes += "bg-red-500/20 text-white ";
+                else if (isRelated) classes += "bg-white/5 ";
+                else classes += "bg-transparent ";
+
+                if (isInit) classes += "text-zinc-500 ";
+                else if (!isErr) classes += "text-red-400 ";
+
+                return classes;
+            };
+
+            return (
+                <div className="min-h-screen bg-[#050000] text-white flex flex-col items-center pt-20 px-4 relative touch-none">
+                    
+                     {/* --- NAVBAR --- */}
+                    <nav className="fixed top-0 left-0 right-0 z-40 px-6 py-3 backdrop-blur-md border-b border-white/5 bg-black/40">
+                        <div className="max-w-7xl mx-auto flex justify-between items-center">
+                            <a href="https://games.godsplan.site" className="flex items-center gap-3 cursor-pointer group no-underline">
+                                <div className="relative w-8 h-8 flex items-center justify-center overflow-hidden rounded-full bg-zinc-900 border border-zinc-800 group-hover:border-red-500/50 transition-colors">
+                                    <i className="ph-duotone ph-planet text-red-500 text-xl relative z-10 group-hover:rotate-180 transition-transform duration-700 ease-in-out"></i>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="font-bold tracking-tight text-white leading-none text-sm group-hover:text-red-500 transition-colors">GOD'S PLAN</span>
+                                    <span className="text-[8px] text-zinc-500 font-mono tracking-widest uppercase">Nexus Hub v4.1</span>
+                                </div>
+                            </a>
+                            <div className="flex items-center gap-4">
+                                <div className="hidden md:flex flex-col items-end text-right border-r border-white/10 pr-4">
+                                    <span className="font-mono text-[10px] text-zinc-300 font-bold">{currentDate.toLocaleTimeString('en-US', { hour12: false })}</span>
+                                    <span className="text-[9px] text-zinc-600 uppercase tracking-widest">{currentDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}</span>
+                                </div>
+                                <div className="flex items-center gap-2 px-2 py-0.5 rounded-full bg-emerald-950/30 border border-emerald-500/20">
+                                    <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span></span>
+                                    <span className="hidden sm:block text-[9px] font-bold text-emerald-500 tracking-wider">ONLINE</span>
+                                </div>
+                                <a href="https://games.godsplan.site" className="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all border border-white/10 group">
+                                    <i className="ph-bold ph-paper-plane-right group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform text-base"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </nav>
+
+                    {/* Ambience */}
+                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-red-900/20 rounded-full blur-[120px] animate-pulse"></div>
+                        <div className="absolute bottom-[-10%] right-[-20%] w-[60%] h-[60%] bg-red-800/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+                    </div>
+
+                    <div className="z-10 w-full max-w-md flex flex-col items-center relative mt-1">
+                        
+                        {/* Header */}
+                        <div className="w-full flex justify-between items-end mb-3">
+                            <div>
+                                <h1 className="text-4xl font-black tracking-tighter italic text-red-500 drop-shadow-[0_0_15px_rgba(220,38,38,0.6)] leading-none">SUDOKU</h1>
+                                <p className="text-white/60 text-[10px] font-mono tracking-widest mt-0.5">LOGIC PROTOCOL</p>
+                            </div>
+                            <div className="flex gap-2 text-[10px] font-mono">
+                                <div className="bg-white/5 rounded px-2 py-1 border border-white/10 flex flex-col items-center">
+                                    <span className="text-zinc-500">Mistakes</span>
+                                    <span className={`${mistakes >= 3 ? 'text-red-500 animate-pulse' : 'text-white'}`}>{mistakes}/3</span>
+                                </div>
+                                <div className="bg-white/5 rounded px-2 py-1 border border-white/10 flex flex-col items-center min-w-[50px]">
+                                    <span className="text-zinc-500">Time</span>
+                                    <span className="text-white">{formatTime(time)}</span>
+                                </div>
+                                <div className="bg-white/5 rounded px-2 py-1 border border-white/10 flex flex-col items-center">
+                                    <span className="text-zinc-500">Diff</span>
+                                    <span className="text-red-400 uppercase">{difficulty}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* OVERLAYS (Menu, Win, Lose) */}
+                        {gameState === 'menu' && (
+                            <div className="absolute top-20 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl rounded-xl p-6 flex flex-col items-center justify-center animate-pop border border-white/10 shadow-2xl h-[400px]">
+                                <i className="ph-duotone ph-grid-nine text-red-500 text-6xl mb-6"></i>
+                                <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-widest">Select Difficulty</h2>
+                                <div className="flex flex-col gap-3 w-full max-w-[200px]">
+                                    <button onClick={() => startNewGame('easy')} className="bg-zinc-800 hover:bg-emerald-900/50 hover:text-emerald-400 border border-white/10 py-3 rounded text-xs font-bold uppercase tracking-widest transition-all">Easy</button>
+                                    <button onClick={() => startNewGame('medium')} className="bg-zinc-800 hover:bg-yellow-900/50 hover:text-yellow-400 border border-white/10 py-3 rounded text-xs font-bold uppercase tracking-widest transition-all">Medium</button>
+                                    <button onClick={() => startNewGame('hard')} className="bg-zinc-800 hover:bg-red-900/50 hover:text-red-400 border border-white/10 py-3 rounded text-xs font-bold uppercase tracking-widest transition-all">Hard</button>
+                                </div>
+                                <button onClick={() => gameState === 'playing' ? setGameState('playing') : null} className={`mt-6 text-zinc-500 text-xs underline hover:text-white ${grid.length === 0 ? 'hidden' : ''}`}>Resume Game</button>
+                            </div>
+                        )}
+
+                        {gameState === 'won' && (
+                            <div className="absolute top-20 left-0 right-0 z-50 bg-black/90 backdrop-blur-md rounded-xl p-8 flex flex-col items-center justify-center animate-pop border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.2)]">
+                                <i className="ph-fill ph-crown text-yellow-500 text-6xl mb-4 drop-shadow-[0_0_25px_rgba(234,179,8,0.6)] animate-bounce"></i>
+                                <h2 className="text-4xl font-black text-white mb-2 italic tracking-tighter">VICTORY</h2>
+                                <p className="text-zinc-400 mb-6 font-mono text-sm">Protocol Completed Successfully</p>
+                                <button onClick={() => setGameState('menu')} className="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded text-xs font-bold uppercase tracking-widest transition-all text-white">Continue</button>
+                            </div>
+                        )}
+
+                        {gameState === 'gameover' && (
+                            <div className="absolute top-20 left-0 right-0 z-50 bg-black/90 backdrop-blur-md rounded-xl p-8 flex flex-col items-center justify-center animate-pop border border-red-500/30 shadow-[0_0_50px_rgba(220,38,38,0.3)]">
+                                <i className="ph-fill ph-skull text-red-500 text-6xl mb-4 animate-pulse"></i>
+                                <h2 className="text-4xl font-black text-white mb-2 italic tracking-tighter">GAME OVER</h2>
+                                <p className="text-zinc-400 mb-6 font-mono text-sm">Too many mistakes detected.</p>
+                                <button onClick={() => setGameState('menu')} className="w-full bg-red-600 hover:bg-red-500 py-3 rounded text-xs font-bold uppercase tracking-widest transition-all text-white">Try Again</button>
+                            </div>
+                        )}
+
+                        {/* Board */}
+                        <div className="bg-zinc-900/80 backdrop-blur-xl border-2 border-white/10 rounded-lg overflow-hidden shadow-2xl relative">
+                            <div className="flex flex-col">
+                                {grid.length > 0 ? grid.map((rowArr, rIndex) => (
+                                    <div key={rIndex} className="flex sudoku-row h-[32px] sm:h-[38px]">
+                                        {rowArr.map((cellVal, cIndex) => (
+                                            <div 
+                                                key={`${rIndex}-${cIndex}`} 
+                                                onClick={() => setSelected({row: rIndex, col: cIndex})}
+                                                className={`w-[32px] sm:w-[38px] ${getCellClass(rIndex, cIndex)}`}
+                                            >
+                                                {cellVal !== BLANK ? cellVal : (
+                                                    <div className="grid grid-cols-3 w-full h-full p-[1px]">
+                                                        {[1,2,3,4,5,6,7,8,9].map(n => (
+                                                            <div key={n} className="flex items-center justify-center text-[7px] sm:text-[8px] leading-none text-zinc-500">
+                                                                {notes[rIndex][cIndex].has(n) ? n : ''}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )) : <div className="h-[288px] sm:h-[342px] w-[288px] sm:w-[342px] flex items-center justify-center text-zinc-600 font-mono text-xs">Waiting for initialization...</div>}
+                            </div>
+                        </div>
+
+                        {/* Controls */}
+                        <div className="w-full mt-4 flex flex-col gap-3">
+                            {/* Toolbar */}
+                            <div className="flex justify-between gap-2 px-2">
+                                <button onClick={handleUndo} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors" title="Undo (Ctrl+Z)">
+                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10">
+                                        <i className="ph-bold ph-arrow-u-up-left text-lg"></i>
+                                    </div>
+                                    <span className="text-[10px] uppercase font-bold tracking-wider">Undo</span>
+                                </button>
+                                <button onClick={handleErase} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors" title="Erase (Del)">
+                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10">
+                                        <i className="ph-bold ph-eraser text-lg"></i>
+                                    </div>
+                                    <span className="text-[10px] uppercase font-bold tracking-wider">Erase</span>
+                                </button>
+                                <button onClick={() => setIsNoteMode(!isNoteMode)} className={`flex flex-col items-center gap-1 transition-colors ${isNoteMode ? 'text-red-400' : 'text-zinc-400 hover:text-white'}`} title="Notes (N)">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all ${isNoteMode ? 'bg-red-500/20 border-red-500 text-red-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+                                        <i className="ph-bold ph-pencil-simple text-lg"></i>
+                                    </div>
+                                    <span className="text-[10px] uppercase font-bold tracking-wider">Notes</span>
+                                </button>
+                                <div className="h-10 w-[1px] bg-white/10 mx-1"></div>
+                                <button onClick={() => setGameState('menu')} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors">
+                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10">
+                                        <i className="ph-bold ph-plus text-lg"></i>
+                                    </div>
+                                    <span className="text-[10px] uppercase font-bold tracking-wider">New</span>
+                                </button>
+                            </div>
+
+                            {/* Numpad */}
+                            <div className="grid grid-cols-9 gap-1 sm:gap-2">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                                    <button 
+                                        key={num} 
+                                        onClick={() => handleNumberInput(num)}
+                                        className="h-10 sm:h-12 rounded bg-zinc-800/50 hover:bg-red-900/40 border border-white/5 hover:border-red-500/50 text-red-100 font-bold text-lg transition-all active:scale-95 flex items-center justify-center"
+                                    >
+                                        {num}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<CrimsonSudoku />);
+    </script>
+</body>
+</html>
