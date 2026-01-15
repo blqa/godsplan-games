@@ -45,10 +45,15 @@
         }
 
         .btn-press {
-            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s;
+            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s, opacity 0.2s;
         }
         .btn-press:active {
             transform: scale(0.92);
+        }
+        .btn-press:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            transform: none;
         }
 
         /* --- GAME BOARD --- */
@@ -273,7 +278,7 @@
             <h2 class="text-2xl font-extrabold text-slate-800 mb-2">¡Completado!</h2>
             <p class="text-slate-500 mb-8 font-medium">Puzzle resuelto con éxito</p>
             
-            <button onclick="Game.nextLevel()" class="btn-press w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-200">
+            <button id="next-lvl-btn" onclick="Game.nextLevel()" class="btn-press w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-200">
                 Siguiente Nivel
             </button>
         </div>
@@ -319,6 +324,10 @@
             arrows: [],
             savedArrows: [],
             isAnimating: false,
+            // --- FIX START: STATE FLAGS ---
+            isLevelComplete: false,
+            isProcessingLevel: false,
+            // --- FIX END ---
 
             init() {
                 const savedLvl = localStorage.getItem('arrow-puzzle-level');
@@ -354,6 +363,13 @@
             },
 
             async generateLevel() {
+                // --- FIX START: Reset Flags ---
+                this.isLevelComplete = false;
+                this.isProcessingLevel = false;
+                const nextBtn = document.getElementById('next-lvl-btn');
+                if(nextBtn) nextBtn.disabled = false;
+                // --- FIX END ---
+
                 const overlay = document.getElementById('loading-overlay');
                 overlay.classList.remove('opacity-0', 'pointer-events-none');
                 
@@ -394,7 +410,6 @@
                     el.style.gridColumnStart = arrow.bbox.c + 1;
                     el.style.gridColumnEnd = `span ${arrow.bbox.w}`;
                     
-                    // Z-Index priority: Small arrows > Big arrows
                     const isSmall = (arrow.occupiedIndices.length === 1);
                     el.style.zIndex = isSmall ? 20 : 10; 
 
@@ -412,12 +427,13 @@
             },
 
             handleArrowClick(arrow, element) {
+                // Ignore input if we already won the level
+                if (this.isLevelComplete) return;
                 if (this.isAnimating && !this.arrows.find(a=>a.id === arrow.id)) return;
 
                 const { blockers, freeSteps } = Logic.checkPath(arrow, this.arrows, this.gridSize);
 
                 if (blockers.length === 0) {
-                    // SUCCESS
                     AudioSys.pop();
                     if(navigator.vibrate) navigator.vibrate(10);
                     
@@ -451,11 +467,9 @@
                     }, 600);
 
                 } else {
-                    // BLOCKED
                     AudioSys.error();
                     if(navigator.vibrate) navigator.vibrate(40);
                     
-                    // Calculate Bump Physics
                     let bumpX = '0px', bumpY = '0px';
                     const bumpAmount = (freeSteps > 0) ? 30 : 5; 
                     
@@ -482,7 +496,10 @@
             },
 
             checkWin() {
-                if (this.arrows.length === 0) {
+                // --- FIX START: Prevent double win trigger ---
+                if (this.arrows.length === 0 && !this.isLevelComplete) {
+                    this.isLevelComplete = true; // Set flag immediately
+                    
                     AudioSys.win();
                     if(navigator.vibrate) navigator.vibrate([10, 30, 10]);
                     
@@ -493,14 +510,25 @@
                     setTimeout(() => document.getElementById('star-2').classList.add('pop'), 300);
                     setTimeout(() => document.getElementById('star-3').classList.add('pop'), 500);
                 }
+                // --- FIX END ---
             },
 
             nextLevel() {
+                // --- FIX START: Prevent double click ---
+                if (this.isProcessingLevel) return;
+                this.isProcessingLevel = true;
+                
+                const btn = document.getElementById('next-lvl-btn');
+                if(btn) btn.disabled = true; // Visual feedback
+                // --- FIX END ---
+
                 document.getElementById('win-modal').classList.remove('active');
                 document.querySelectorAll('.star-icon').forEach(s => s.classList.remove('pop'));
+                
                 this.level++;
                 localStorage.setItem('arrow-puzzle-level', this.level);
                 document.getElementById('level-display').innerText = this.level;
+                
                 this.generateLevel();
             }
         };
