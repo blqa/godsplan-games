@@ -104,15 +104,13 @@
             cursor: pointer;
         }
 
-        /* --- ANIMATIONS --- */
-        
+        /* --- STYLES --- */
         .arrow-line {
-            fill: none !important; /* FORCE NO FILL */
+            fill: none; /* Asegura que no se rellene */
             stroke: var(--primary);
-            stroke-width: 14;
+            stroke-width: 16;
             stroke-linecap: round;
             stroke-linejoin: round;
-            transition: stroke-dashoffset 0.6s cubic-bezier(0.45, 0, 0.55, 1);
         }
 
         .arrow-head {
@@ -123,28 +121,7 @@
         .is-blocking .arrow-line { stroke: var(--danger) !important; }
         .is-blocking .arrow-head { fill: var(--danger) !important; }
 
-        /* EXIT STATE */
-        .snake-out {
-            pointer-events: none !important;
-            z-index: 50; 
-        }
-        
-        /* 1. Body Slide */
-        .snake-out .arrow-line {
-            stroke-dashoffset: var(--dash-target) !important;
-        }
-        
-        /* 2. Head Fly - Uses Keyframes to preserve start position */
-        .snake-out .arrow-head-group {
-            animation: flyHead 0.6s cubic-bezier(0.45, 0, 0.55, 1) forwards;
-        }
-
-        @keyframes flyHead {
-            0% { transform: var(--head-start); }
-            100% { transform: var(--head-end); }
-        }
-
-        /* BUMP ANIMATION */
+        /* BUMP ANIMATION (Solo para el error) */
         .blocked-bump {
             animation: bump 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
@@ -397,7 +374,6 @@
                     
                     this.arrows = this.arrows.filter(a => a.id !== arrow.id);
                     
-                    // --- SNAKE ANIMATION LOGIC ---
                     const flyDist = 1200; 
                     let dx = 0, dy = 0;
                     if (arrow.dir === UP) dy = -flyDist;
@@ -406,23 +382,29 @@
                     else if (arrow.dir === RIGHT) dx = flyDist;
 
                     const pathEl = element.querySelector('.arrow-line');
+                    const headGroup = element.querySelector('.arrow-head-group');
                     const originalD = pathEl.getAttribute('d');
-                    const newD = `${originalD} l ${dx} ${dy}`;
-                    pathEl.setAttribute('d', newD);
-
+                    
+                    // --- SETUP ANIMATION ---
+                    // 1. Extend path
+                    pathEl.setAttribute('d', `${originalD} l ${dx} ${dy}`);
                     const bodyLen = (arrow.occupiedIndices.length) * 100;
                     pathEl.style.strokeDasharray = `${bodyLen} 10000`;
                     pathEl.style.strokeDashoffset = '0';
-                    
-                    void pathEl.offsetWidth;
+                    void pathEl.offsetWidth; // Force Reflow
 
-                    // --- HEAD POSITION FIX ---
-                    // Calculate Start Position (Relative to viewBox 0,0)
+                    // 2. JS ANIMATION LOOP (Synchronized)
+                    // We remove CSS transitions to handle everything here
+                    pathEl.style.transition = 'none';
+                    // We don't use CSS for head pos anymore
+                    
+                    const duration = 500;
+                    const startTime = performance.now();
+                    
+                    // Original Head Pos
                     const headIndex = arrow.occupiedIndices[arrow.occupiedIndices.length - 1];
                     const headR = Math.floor(headIndex / Game.gridSize);
                     const headC = headIndex % Game.gridSize;
-                    
-                    // Coordinates relative to the arrow's BBox origin
                     const startX = (headC - arrow.bbox.c) * 100 + 50;
                     const startY = (headR - arrow.bbox.r) * 100 + 50;
                     
@@ -430,16 +412,37 @@
                     if(arrow.dir === UP) rot = -90;
                     else if(arrow.dir === DOWN) rot = 90;
                     else if(arrow.dir === LEFT) rot = 180;
-                    else if(arrow.dir === RIGHT) rot = 0;
 
-                    // Set Start & End Variables for CSS Animation
-                    element.style.setProperty('--head-start', `translate(${startX}px, ${startY}px) rotate(${rot}deg)`);
-                    element.style.setProperty('--head-end', `translate(${startX + dx}px, ${startY + dy}px) rotate(${rot}deg)`);
+                    // EaseOutCubic function
+                    const ease = t => 1 - Math.pow(1 - t, 3);
+
+                    function animate(time) {
+                        let elapsed = time - startTime;
+                        let progress = Math.min(elapsed / duration, 1);
+                        let eased = ease(progress);
+
+                        // Animate Dash (Body Slide)
+                        // We slide from 0 to -flyDist
+                        const currentDash = -flyDist * eased;
+                        pathEl.style.strokeDashoffset = currentDash;
+
+                        // Animate Head (Translate)
+                        // We slide from 0,0 to dx,dy
+                        const currentX = startX + (dx * eased);
+                        const currentY = startY + (dy * eased);
+                        // Using attribute directly or style without px
+                        headGroup.setAttribute('transform', `translate(${currentX}, ${currentY}) rotate(${rot})`);
+
+                        if (progress < 1) {
+                            requestAnimationFrame(animate);
+                        } else {
+                            element.remove();
+                            Game.checkWin();
+                        }
+                    }
                     
-                    // Trigger
-                    element.style.setProperty('--dash-target', `-${flyDist}`);
-                    element.classList.add('snake-out');
-
+                    requestAnimationFrame(animate);
+                    
                     // Particles
                     const rect = element.getBoundingClientRect();
                     let px = rect.left + rect.width/2;
@@ -448,13 +451,7 @@
                     else if(arrow.dir === DOWN) py = rect.bottom;
                     else if(arrow.dir === LEFT) px = rect.left;
                     else if(arrow.dir === RIGHT) px = rect.right;
-                    
                     Effects.burst(px, py, arrow.dir);
-
-                    setTimeout(() => {
-                        element.remove();
-                        this.checkWin();
-                    }, 600); 
 
                 } else {
                     AudioSys.error();
@@ -554,12 +551,14 @@
                 const vbW = arrow.bbox.w * 100;
                 const vbH = arrow.bbox.h * 100;
 
+                // FORCE FILL NONE explicitly
                 return `
                 <svg class="arrow-svg" viewBox="0 0 ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet">
-                    <!-- FORCE FILL NONE explicitly in HTML -->
                     <path d="${d}" fill="none" class="arrow-line" />
+                    <!-- Use explicit attribute for transform to avoid CSS unit issues -->
                     <g class="arrow-head-group" transform="translate(${head.x}, ${head.y}) rotate(${rotation})">
-                        <path d="M -10 -14 L 16 0 L -10 14 Z" class="arrow-head" />
+                        <!-- Simple triangle head with fill -->
+                        <path d="M -10 -14 L 16 0 L -10 14 Z" fill="var(--primary)" class="arrow-head" />
                     </g>
                 </svg>
                 `;
