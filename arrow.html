@@ -85,6 +85,10 @@
             grid-auto-columns: minmax(0, 1fr);
             transition: all 0.3s ease; /* Smooth transition when resizing grid */
         }
+        
+        .game-board.locked {
+            pointer-events: none; /* Disable all clicks on board */
+        }
 
         .grid-cell {
             background-color: var(--surface);
@@ -390,13 +394,15 @@
             async generateLevel() {
                 // --- Reset Flags ---
                 this.isLevelComplete = false;
-                this.isProcessingLevel = false;
-                const nextBtn = document.getElementById('next-lvl-btn');
-                if(nextBtn) nextBtn.disabled = false;
+                // NOTE: Do NOT reset isProcessingLevel here. It must stay locked until finished.
+                // The button remains disabled until we are fully ready.
 
                 const overlay = document.getElementById('loading-overlay');
                 overlay.classList.remove('opacity-0', 'pointer-events-none');
                 
+                // Unlock board pointer events for the new level
+                document.getElementById('game-board').classList.remove('locked');
+
                 await new Promise(r => setTimeout(r, 400));
                 
                 const newArrows = await LevelGenerator.create(this.gridSize, this.level);
@@ -411,6 +417,12 @@
                 if (this.gridSize >= 6) hint.innerText = "¡Tablero denso! Planifica bien";
                 else if(this.level > 5) hint.innerText = "¡Nivel avanzado! Formas complejas";
                 else hint.innerText = "Despeja el tablero (necesitan camino libre)";
+
+                // --- UNLOCKING ---
+                // Now that everything is ready and rendered, we unlock the system
+                this.isProcessingLevel = false;
+                const nextBtn = document.getElementById('next-lvl-btn');
+                if(nextBtn) nextBtn.disabled = false;
             },
 
             restartLevel() {
@@ -452,7 +464,11 @@
             },
 
             handleArrowClick(arrow, element) {
-                // Ignore input if we already won the level
+                // --- STRICT GHOST CLICK PREVENTION ---
+                // If the arrow is not in our data model, it doesn't exist. Period.
+                // This stops "double clicks" on the last arrow from triggering logic twice.
+                if (!this.arrows.find(a => a.id === arrow.id)) return;
+
                 if (this.isLevelComplete) return;
                 if (this.isAnimating && !this.arrows.find(a=>a.id === arrow.id)) return;
 
@@ -525,6 +541,10 @@
                 if (this.arrows.length === 0 && !this.isLevelComplete) {
                     this.isLevelComplete = true; // Set flag immediately
                     
+                    // --- BOARD LOCKDOWN ---
+                    // Prevent any further clicks on remaining DOM elements (flying arrows, etc)
+                    document.getElementById('game-board').classList.add('locked');
+                    
                     AudioSys.win();
                     if(navigator.vibrate) navigator.vibrate([10, 30, 10]);
                     
@@ -538,7 +558,7 @@
             },
 
             nextLevel() {
-                // Prevent double click
+                // --- LEVEL SKIP PREVENTION ---
                 if (this.isProcessingLevel) return;
                 this.isProcessingLevel = true;
                 
