@@ -118,7 +118,7 @@
         .arrow-body {
             fill: var(--primary);
             stroke: var(--primary);
-            stroke-width: 16;
+            stroke-width: 12; /* Refined width */
             stroke-linecap: round;
             stroke-linejoin: round;
             transition: fill 0.3s, stroke 0.3s;
@@ -132,6 +132,11 @@
         /* Animations & States */
         .blocked-shake {
             animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* New Bump Animation */
+        .blocked-bump {
+            animation: bump 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
         }
         
         .is-blocking .arrow-body {
@@ -152,6 +157,12 @@
             20%, 80% { transform: translate3d(2px, 0, 0); }
             30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
             40%, 60% { transform: translate3d(3px, 0, 0); }
+        }
+
+        @keyframes bump {
+            0% { transform: translate(0, 0); }
+            40% { transform: translate(var(--bumpX), var(--bumpY)); }
+            100% { transform: translate(0, 0); }
         }
 
         /* --- OVERLAYS --- */
@@ -248,7 +259,7 @@
 
     <!-- Footer / Hint -->
     <footer class="pb-safe-bottom px-6 py-4 text-center z-10">
-        <p id="hint-text" class="text-slate-400 font-medium text-sm">Toca las flechas para liberarlas</p>
+        <p id="hint-text" class="text-slate-400 font-medium text-sm">Despeja el tablero (necesitan camino libre)</p>
     </footer>
 
     <!-- Level Complete Modal -->
@@ -314,7 +325,7 @@
                 if(savedLvl) this.level = parseInt(savedLvl);
                 document.getElementById('level-display').innerText = this.level;
                 
-                // --- FIX: RIGID GRID SETUP ---
+                // --- GRID SETUP ---
                 const bgLayer = document.getElementById('grid-bg-layer');
                 const board = document.getElementById('game-board');
                 
@@ -358,8 +369,7 @@
                 
                 const hint = document.getElementById('hint-text');
                 if(this.level > 5) hint.innerText = "¡Nivel avanzado! Formas complejas";
-                else if(this.level === 1) hint.innerText = "Toca las flechas que tienen el camino libre";
-                else hint.innerText = "Despeja el tablero";
+                else hint.innerText = "Despeja el tablero (necesitan camino libre)";
             },
 
             restartLevel() {
@@ -384,8 +394,7 @@
                     el.style.gridColumnStart = arrow.bbox.c + 1;
                     el.style.gridColumnEnd = `span ${arrow.bbox.w}`;
                     
-                    // Improved Z-Index: Smaller on top, but also respect grid order to prevent weird overlaps
-                    // Base Z: 10. +10 if small.
+                    // Z-Index priority: Small arrows > Big arrows
                     const isSmall = (arrow.occupiedIndices.length === 1);
                     el.style.zIndex = isSmall ? 20 : 10; 
 
@@ -405,9 +414,10 @@
             handleArrowClick(arrow, element) {
                 if (this.isAnimating && !this.arrows.find(a=>a.id === arrow.id)) return;
 
-                const blockers = Logic.getBlockers(arrow, this.arrows, this.gridSize);
+                const { blockers, freeSteps } = Logic.checkPath(arrow, this.arrows, this.gridSize);
 
                 if (blockers.length === 0) {
+                    // SUCCESS
                     AudioSys.pop();
                     if(navigator.vibrate) navigator.vibrate(10);
                     
@@ -441,12 +451,25 @@
                     }, 600);
 
                 } else {
+                    // BLOCKED
                     AudioSys.error();
                     if(navigator.vibrate) navigator.vibrate(40);
                     
-                    element.classList.remove('blocked-shake');
+                    // Calculate Bump Physics
+                    let bumpX = '0px', bumpY = '0px';
+                    const bumpAmount = (freeSteps > 0) ? 30 : 5; 
+                    
+                    if (arrow.dir === UP) bumpY = `-${bumpAmount}px`;
+                    else if (arrow.dir === DOWN) bumpY = `${bumpAmount}px`;
+                    else if (arrow.dir === LEFT) bumpX = `-${bumpAmount}px`;
+                    else if (arrow.dir === RIGHT) bumpX = `${bumpAmount}px`;
+
+                    element.style.setProperty('--bumpX', bumpX);
+                    element.style.setProperty('--bumpY', bumpY);
+
+                    element.classList.remove('blocked-bump');
                     void element.offsetWidth;
-                    element.classList.add('blocked-shake');
+                    element.classList.add('blocked-bump');
 
                     blockers.forEach(blockerId => {
                         const blockerEl = document.getElementById(`arrow-${blockerId}`);
@@ -488,7 +511,6 @@
                 const minC = arrow.bbox.c;
                 const indices = [...arrow.occupiedIndices];
                 
-                // Fixed 100 units per cell logic
                 const points = indices.map(idx => ({
                     x: ((idx % gridSize) - minC) * 100 + 50,
                     y: (Math.floor(idx / gridSize) - minR) * 100 + 50
@@ -517,35 +539,21 @@
                     </defs>
                     <path d="${d}" class="arrow-body" stroke-linecap="round" stroke-linejoin="round" />
                     <g transform="translate(${head.x}, ${head.y}) rotate(${rotation})">
-                        <path d="M -12 -14 L 16 0 L -12 14 Z" fill="var(--primary)" class="arrow-body" stroke="none" />
+                         <!-- Slightly wider/shorter arrow head for better directionality -->
+                        <path d="M -10 -16 L 18 0 L -10 16 Z" fill="var(--primary)" class="arrow-body" stroke="none" />
                     </g>
-                    <path d="${d}" class="arrow-highlight" stroke="rgba(255,255,255,0.3)" stroke-width="8" fill="none" transform="translate(-2, -2)" />
+                    <path d="${d}" class="arrow-highlight" stroke="rgba(255,255,255,0.3)" stroke-width="6" fill="none" transform="translate(-2, -2)" />
                 </svg>
                 `;
             }
         };
 
         const Logic = {
-            getBlockers(arrow, allArrows, gridSize) {
-                // --- CRITICAL FIX: EDGE ESCAPE SHORTCUT ---
-                // If the arrow's head is AT the edge and pointing OUT, it should NEVER be blocked by the grid content.
-                // We check the "front-most" coordinate of the arrow in its direction.
+            checkPath(arrow, allArrows, gridSize) {
+                // --- SNAKE LOGIC FIX ---
+                // We only check if the PATH OF THE HEAD is clear.
+                // The body follows the head, so we ignore sideways collisions of the body.
                 
-                const rs = arrow.occupiedIndices.map(i => Math.floor(i/gridSize));
-                const cs = arrow.occupiedIndices.map(i => i%gridSize);
-                
-                const minR = Math.min(...rs);
-                const maxR = Math.max(...rs);
-                const minC = Math.min(...cs);
-                const maxC = Math.max(...cs);
-
-                // If pointing DOWN and body reaches the bottom edge, it's free (assuming no overlap, which is guaranteed by generator)
-                if (arrow.dir === DOWN && maxR === gridSize - 1) return [];
-                if (arrow.dir === UP && minR === 0) return [];
-                if (arrow.dir === RIGHT && maxC === gridSize - 1) return [];
-                if (arrow.dir === LEFT && minC === 0) return [];
-
-                // --- STANDARD RAYCAST LOGIC (For internal movement) ---
                 const occupiedSet = new Map();
                 allArrows.forEach(a => {
                     if (a.id !== arrow.id) {
@@ -554,37 +562,50 @@
                 });
 
                 const blockers = new Set();
+                let minDistanceToBlocker = 999;
+
+                // Identify Head Index (Last element in occupiedIndices)
+                const headIndex = arrow.occupiedIndices[arrow.occupiedIndices.length - 1];
                 
-                for (let cellIndex of arrow.occupiedIndices) {
-                    let r = Math.floor(cellIndex / gridSize);
-                    let c = cellIndex % gridSize;
+                let r = Math.floor(headIndex / gridSize);
+                let c = headIndex % gridSize;
+                let steps = 0;
+
+                // Move one step forward to start raycasting
+                if (arrow.dir === UP) r--;
+                else if (arrow.dir === DOWN) r++;
+                else if (arrow.dir === LEFT) c--;
+                else if (arrow.dir === RIGHT) c++;
+                steps++;
+
+                // Trace ray to the edge of the board
+                while (r >= 0 && r < gridSize && c >= 0 && c < gridSize) {
+                    const idx = r * gridSize + c;
+                    if (occupiedSet.has(idx)) {
+                        blockers.add(occupiedSet.get(idx));
+                        if (steps < minDistanceToBlocker) minDistanceToBlocker = steps;
+                    }
                     
                     if (arrow.dir === UP) r--;
                     else if (arrow.dir === DOWN) r++;
                     else if (arrow.dir === LEFT) c--;
                     else if (arrow.dir === RIGHT) c++;
-
-                    while (r >= 0 && r < gridSize && c >= 0 && c < gridSize) {
-                        const idx = r * gridSize + c;
-                        if (occupiedSet.has(idx)) {
-                            blockers.add(occupiedSet.get(idx));
-                        }
-                        
-                        if (arrow.dir === UP) r--;
-                        else if (arrow.dir === DOWN) r++;
-                        else if (arrow.dir === LEFT) c--;
-                        else if (arrow.dir === RIGHT) c++;
-                    }
+                    steps++;
                 }
-                return Array.from(blockers);
+
+                return { 
+                    blockers: Array.from(blockers), 
+                    freeSteps: blockers.size > 0 ? Math.max(0, minDistanceToBlocker - 1) : 999 
+                };
             },
 
+            // Only used by generator
             isSolvable(testArrows, gridSize) {
                 let simArrows = JSON.parse(JSON.stringify(testArrows));
                 let changed = true;
                 while (changed && simArrows.length > 0) {
                     changed = false;
-                    const indexToRemove = simArrows.findIndex(a => this.getBlockers(a, simArrows, gridSize).length === 0);
+                    const indexToRemove = simArrows.findIndex(a => this.checkPath(a, simArrows, gridSize).blockers.length === 0);
                     if (indexToRemove !== -1) {
                         simArrows.splice(indexToRemove, 1);
                         changed = true;
@@ -672,6 +693,7 @@
                             attempts++;
                         }
                         
+                        // Fallback
                         if (!valid) {
                              resultArrows = [
                                 {id:1, dir:UP, occupiedIndices:[17,12], bbox:{r:2,c:2,w:1,h:2}},
