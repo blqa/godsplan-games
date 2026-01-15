@@ -318,7 +318,6 @@
                 const bgLayer = document.getElementById('grid-bg-layer');
                 const board = document.getElementById('game-board');
                 
-                // Force strict tracks using minmax(0, 1fr)
                 const template = `repeat(${this.gridSize}, minmax(0, 1fr))`;
                 
                 bgLayer.style.gridTemplateColumns = template;
@@ -385,8 +384,10 @@
                     el.style.gridColumnStart = arrow.bbox.c + 1;
                     el.style.gridColumnEnd = `span ${arrow.bbox.w}`;
                     
-                    // Simple Z-Index: smaller items usually on top to be clickable if overlapped (though logic prevents overlap)
-                    el.style.zIndex = 10; 
+                    // Improved Z-Index: Smaller on top, but also respect grid order to prevent weird overlaps
+                    // Base Z: 10. +10 if small.
+                    const isSmall = (arrow.occupiedIndices.length === 1);
+                    el.style.zIndex = isSmall ? 20 : 10; 
 
                     const svgContent = Renderer.drawArrow(arrow, this.gridSize);
                     el.innerHTML = svgContent;
@@ -526,6 +527,25 @@
 
         const Logic = {
             getBlockers(arrow, allArrows, gridSize) {
+                // --- CRITICAL FIX: EDGE ESCAPE SHORTCUT ---
+                // If the arrow's head is AT the edge and pointing OUT, it should NEVER be blocked by the grid content.
+                // We check the "front-most" coordinate of the arrow in its direction.
+                
+                const rs = arrow.occupiedIndices.map(i => Math.floor(i/gridSize));
+                const cs = arrow.occupiedIndices.map(i => i%gridSize);
+                
+                const minR = Math.min(...rs);
+                const maxR = Math.max(...rs);
+                const minC = Math.min(...cs);
+                const maxC = Math.max(...cs);
+
+                // If pointing DOWN and body reaches the bottom edge, it's free (assuming no overlap, which is guaranteed by generator)
+                if (arrow.dir === DOWN && maxR === gridSize - 1) return [];
+                if (arrow.dir === UP && minR === 0) return [];
+                if (arrow.dir === RIGHT && maxC === gridSize - 1) return [];
+                if (arrow.dir === LEFT && minC === 0) return [];
+
+                // --- STANDARD RAYCAST LOGIC (For internal movement) ---
                 const occupiedSet = new Map();
                 allArrows.forEach(a => {
                     if (a.id !== arrow.id) {
