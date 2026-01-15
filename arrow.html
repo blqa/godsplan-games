@@ -56,14 +56,14 @@
             align-items: center;
             justify-content: center;
             position: relative;
-            padding: 20px;
+            padding: 16px;
         }
 
         .game-board {
             display: grid;
             gap: 8px;
             width: 100%;
-            max-width: 360px;
+            max-width: 380px; 
             aspect-ratio: 1;
             background: #cbd5e1;
             padding: 12px;
@@ -82,7 +82,17 @@
             width: 100%;
             height: 100%;
         }
-        .game-board.dense .grid-cell { border-radius: 6px; }
+        
+        /* Ajustes para tableros grandes */
+        .game-board.dense { gap: 6px; padding: 10px; }
+        .game-board.dense .grid-cell { border-radius: 8px; }
+        
+        .game-board.super-dense { 
+            gap: 3px; 
+            padding: 8px; 
+            background: #94a3b8; 
+        }
+        .game-board.super-dense .grid-cell { border-radius: 4px; }
 
         .arrow-container {
             position: relative;
@@ -104,24 +114,34 @@
             cursor: pointer;
         }
 
-        /* --- STYLES --- */
+        /* --- ESTILOS DE FLECHA --- */
         .arrow-line {
-            fill: none; /* Asegura que no se rellene */
+            fill: none;
             stroke: var(--primary);
-            stroke-width: 16;
+            stroke-width: 16px; /* Unidad PX explícita */
             stroke-linecap: round;
             stroke-linejoin: round;
         }
+        
+        /* CORRECCIÓN: Unidad px añadida aquí para evitar flechas invisibles */
+        .game-board.super-dense .arrow-line { stroke-width: 14px; }
 
         .arrow-head {
             fill: var(--primary);
             stroke: none;
         }
 
+        /* Estados */
         .is-blocking .arrow-line { stroke: var(--danger) !important; }
         .is-blocking .arrow-head { fill: var(--danger) !important; }
 
-        /* BUMP ANIMATION (Solo para el error) */
+        /* Exit State */
+        .snake-out {
+            pointer-events: none !important;
+            z-index: 50; 
+        }
+
+        /* Bump Animation */
         .blocked-bump {
             animation: bump 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
@@ -268,15 +288,18 @@
                 if(this.level < 4) this.gridSize = 4;
                 else if(this.level < 9) this.gridSize = 5;
                 else if(this.level < 15) this.gridSize = 6;
-                else this.gridSize = 7;
+                else if(this.level < 25) this.gridSize = 7;
+                else if(this.level < 40) this.gridSize = 8;
+                else this.gridSize = 9;
             },
 
             setupGridDOM() {
                 const bgLayer = document.getElementById('grid-bg-layer');
                 const board = document.getElementById('game-board');
                 
-                if(this.gridSize >= 6) board.classList.add('dense');
-                else board.classList.remove('dense');
+                board.classList.remove('dense', 'super-dense');
+                if(this.gridSize >= 8) board.classList.add('super-dense');
+                else if(this.gridSize >= 6) board.classList.add('dense');
                 
                 const template = `repeat(${this.gridSize}, minmax(0, 1fr))`;
                 bgLayer.style.gridTemplateColumns = template;
@@ -316,8 +339,9 @@
                 overlay.classList.add('opacity-0', 'pointer-events-none');
                 
                 const hint = document.getElementById('hint-text');
-                if (this.gridSize >= 6) hint.innerText = "¡Tablero denso! Planifica bien";
-                else hint.innerText = "Despeja el tablero";
+                if (this.gridSize >= 8) hint.innerText = "¡Nivel Maestro! Concentración total.";
+                else if (this.gridSize >= 6) hint.innerText = "¡Tablero denso! Planifica bien.";
+                else hint.innerText = "Despeja el tablero.";
 
                 this.isProcessingLevel = false;
                 const nextBtn = document.getElementById('next-lvl-btn');
@@ -385,7 +409,6 @@
                     const headGroup = element.querySelector('.arrow-head-group');
                     const originalD = pathEl.getAttribute('d');
                     
-                    // --- SETUP ANIMATION ---
                     // 1. Extend path
                     pathEl.setAttribute('d', `${originalD} l ${dx} ${dy}`);
                     const bodyLen = (arrow.occupiedIndices.length) * 100;
@@ -393,15 +416,10 @@
                     pathEl.style.strokeDashoffset = '0';
                     void pathEl.offsetWidth; // Force Reflow
 
-                    // 2. JS ANIMATION LOOP (Synchronized)
-                    // We remove CSS transitions to handle everything here
-                    pathEl.style.transition = 'none';
-                    // We don't use CSS for head pos anymore
-                    
+                    // 2. JS Animation (Manual Frame Loop) to guarantee sync
                     const duration = 500;
                     const startTime = performance.now();
                     
-                    // Original Head Pos
                     const headIndex = arrow.occupiedIndices[arrow.occupiedIndices.length - 1];
                     const headR = Math.floor(headIndex / Game.gridSize);
                     const headC = headIndex % Game.gridSize;
@@ -413,24 +431,20 @@
                     else if(arrow.dir === DOWN) rot = 90;
                     else if(arrow.dir === LEFT) rot = 180;
 
-                    // EaseOutCubic function
-                    const ease = t => 1 - Math.pow(1 - t, 3);
+                    const ease = t => 1 - Math.pow(1 - t, 3); // Ease Out Cubic
 
                     function animate(time) {
                         let elapsed = time - startTime;
                         let progress = Math.min(elapsed / duration, 1);
                         let eased = ease(progress);
 
-                        // Animate Dash (Body Slide)
-                        // We slide from 0 to -flyDist
+                        // Animate Body Slide
                         const currentDash = -flyDist * eased;
                         pathEl.style.strokeDashoffset = currentDash;
 
-                        // Animate Head (Translate)
-                        // We slide from 0,0 to dx,dy
+                        // Animate Head Translate
                         const currentX = startX + (dx * eased);
                         const currentY = startY + (dy * eased);
-                        // Using attribute directly or style without px
                         headGroup.setAttribute('transform', `translate(${currentX}, ${currentY}) rotate(${rot})`);
 
                         if (progress < 1) {
@@ -441,9 +455,9 @@
                         }
                     }
                     
+                    element.classList.add('snake-out');
                     requestAnimationFrame(animate);
                     
-                    // Particles
                     const rect = element.getBoundingClientRect();
                     let px = rect.left + rect.width/2;
                     let py = rect.top + rect.height/2;
@@ -551,14 +565,12 @@
                 const vbW = arrow.bbox.w * 100;
                 const vbH = arrow.bbox.h * 100;
 
-                // FORCE FILL NONE explicitly
+                // Explicit fill="none" helps prevent rendering glitches in Safari/WebKit
                 return `
                 <svg class="arrow-svg" viewBox="0 0 ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet">
                     <path d="${d}" fill="none" class="arrow-line" />
-                    <!-- Use explicit attribute for transform to avoid CSS unit issues -->
                     <g class="arrow-head-group" transform="translate(${head.x}, ${head.y}) rotate(${rotation})">
-                        <!-- Simple triangle head with fill -->
-                        <path d="M -10 -14 L 16 0 L -10 14 Z" fill="var(--primary)" class="arrow-head" />
+                        <path d="M -10 -14 L 16 0 L -10 14 Z" class="arrow-head" />
                     </g>
                 </svg>
                 `;
@@ -629,6 +641,7 @@
                         let density = 0.65;
                         if(gridSize >= 6) density = 0.60;
                         if(gridSize >= 7) density = 0.55;
+                        if(gridSize >= 8) density = 0.50;
 
                         const maxLen = level < 3 ? 2 : (level < 6 ? 4 : 5);
                         const allowTurns = level >= 2;
