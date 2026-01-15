@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ARROW PROTOCOL - GOD'S PLAN [NETLINK]</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Firebase SDKs (CDN Version for HTML) -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js"></script>
+
+    <!-- Estilos -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030005;
+            color: white;
+            overflow: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Background Grid Animation */
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+        }
+
+        /* Animations */
+        @keyframes fly-up { 0% { transform: translateY(0) scale(1); filter: brightness(1); } 100% { transform: translateY(-120vh) scale(0.5); filter: brightness(2); opacity: 0; } }
+        @keyframes fly-down { 0% { transform: translateY(0) scale(1); filter: brightness(1); } 100% { transform: translateY(120vh) scale(0.5); filter: brightness(2); opacity: 0; } }
+        @keyframes fly-left { 0% { transform: translateX(0) scale(1); filter: brightness(1); } 100% { transform: translateX(-120vw) scale(0.5); filter: brightness(2); opacity: 0; } }
+        @keyframes fly-right { 0% { transform: translateX(0) scale(1); filter: brightness(1); } 100% { transform: translateX(120vw) scale(0.5); filter: brightness(2); opacity: 0; } }
+
+        .flying-up { animation: fly-up 0.5s cubic-bezier(0.5, 0, 0.2, 1) forwards; }
+        .flying-down { animation: fly-down 0.5s cubic-bezier(0.5, 0, 0.2, 1) forwards; }
+        .flying-left { animation: fly-left 0.5s cubic-bezier(0.5, 0, 0.2, 1) forwards; }
+        .flying-right { animation: fly-right 0.5s cubic-bezier(0.5, 0, 0.2, 1) forwards; }
+
+        @keyframes shake-block {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(-3px, 3px); }
+            40% { transform: translate(3px, -3px); }
+            60% { transform: translate(-3px, -3px); }
+            80% { transform: translate(3px, 3px); }
+        }
+        .shaking { animation: shake-block 0.3s ease-in-out; border-color: #ef4444 !important; box-shadow: 0 0 15px #ef4444 !important; z-index: 20; }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.3); opacity: 0; }
+        }
+        
+        .game-grid {
+            display: grid;
+            gap: 6px;
+            perspective: 1000px;
+            transition: transform 0.1s ease-out;
+        }
+
+        /* Glitch Text Effect */
+        .glitch-text {
+            position: relative;
+        }
+        .glitch-text::before, .glitch-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .glitch-text::before {
+            left: 2px;
+            text-shadow: -1px 0 #ff00c1;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim 5s infinite linear alternate-reverse;
+        }
+        .glitch-text::after {
+            left: -2px;
+            text-shadow: -1px 0 #00fff9;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim2 5s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-anim {
+            0% { clip: rect(6px, 9999px, 86px, 0); }
+            100% { clip: rect(27px, 9999px, 14px, 0); }
+        }
+        @keyframes glitch-anim2 {
+            0% { clip: rect(22px, 9999px, 12px, 0); }
+            100% { clip: rect(89px, 9999px, 63px, 0); }
+        }
+
+        /* Particle CSS */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: particle-fade 0.8s ease-out forwards;
+        }
+        @keyframes particle-fade {
+            0% { transform: translate(0,0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+        
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // Importar Firebase Functions desde window (cargado via CDN)
+        const { initializeApp } = firebase;
+        const { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } = firebase;
+        const { getFirestore, collection, addDoc, onSnapshot, query, limit } = firebase;
+        const { getAnalytics } = firebase;
+
+        // --- FIREBASE SETUP ---
+        // Priorizamos la config del entorno para el preview, pero usamos la tuya como fallback explícito
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyD0lX3XmVPQHNNxpsZS82YzDMzM6MLhq3g",
+            authDomain: "godsplan-blqa.firebaseapp.com",
+            projectId: "godsplan-blqa",
+            storageBucket: "godsplan-blqa.firebasestorage.app",
+            messagingSenderId: "1008783768310",
+            appId: "1:1008783768310:web:c09fe541a2f4d23e5b8ad7",
+            measurementId: "G-924H3FVC6Z"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const analytics = getAnalytics(app);
+        // Usamos el projectId como appId si no hay __app_id, para mantener consistencia
+        const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
+
+        // --- AUDIO ENGINE (Synthesized) ---
+        const AudioEngine = {
+            ctx: null,
+            init: function() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            playTone: function(freq, type, duration, vol = 0.1) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+            playClear: function(combo) {
+                this.init();
+                const base = 400 + (combo * 50);
+                this.playTone(base, 'sine', 0.15, 0.2);
+                setTimeout(() => this.playTone(base * 1.5, 'triangle', 0.1, 0.1), 50);
+            },
+            playError: function() {
+                this.init();
+                this.playTone(150, 'sawtooth', 0.3, 0.2);
+                this.playTone(100, 'square', 0.3, 0.2);
+            },
+            playWin: function() {
+                this.init();
+                [0, 100, 200, 300].forEach((delay, i) => {
+                    setTimeout(() => this.playTone(400 + (i * 100), 'sine', 0.4, 0.2), delay);
+                });
+            },
+            playLevelStart: function() {
+                this.init();
+                this.playTone(200, 'square', 0.1, 0.1);
+                setTimeout(() => this.playTone(600, 'sine', 0.4, 0.1), 100);
+            }
+        };
+
+        const { useState, useEffect, useCallback, useRef, useMemo } = React;
+
+        const DIRS = {
+            UP: { dr: -1, dc: 0, deg: -90, anim: 'flying-up' },
+            DOWN: { dr: 1, dc: 0, deg: 90, anim: 'flying-down' },
+            LEFT: { dr: 0, dc: -1, deg: 180, anim: 'flying-left' },
+            RIGHT: { dr: 0, dc: 1, deg: 0, anim: 'flying-right' }
+        };
+
+        // --- DIFFICULTY LOGIC ---
+        const getLevelConfig = (lvl) => {
+            if (lvl <= 3) return { size: 4, density: 0.65 }; // Tutorial / Easy
+            if (lvl <= 7) return { size: 5, density: 0.75 }; // Medium
+            if (lvl <= 12) return { size: 6, density: 0.80 }; // Hard
+            return { size: 7, density: 0.85 }; // Chaos
+        };
+
+        // --- LEVEL GENERATOR ---
+        const generateLevel = (level) => {
+            const config = getLevelConfig(level);
+            const size = config.size;
+            
+            let grid = Array.from({ length: size }, () => Array(size).fill(null));
+            let placedCount = 0;
+            const targetCount = Math.floor(size * size * config.density); 
+            let idCounter = 1;
+
+            let attempts = 0;
+            while (placedCount < targetCount && attempts < 3000) {
+                attempts++;
+                const r = Math.floor(Math.random() * size);
+                const c = Math.floor(Math.random() * size);
+                
+                if (grid[r][c] !== null) continue;
+
+                const possibleDirs = Object.keys(DIRS);
+                const dirKey = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
+                
+                grid[r][c] = {
+                    id: idCounter++,
+                    dir: dirKey,
+                    status: 'active', 
+                    color: Math.random() > 0.9 ? 'gold' : 'standard' // Rare variants
+                };
+                placedCount++;
+                attempts = 0;
+            }
+            return { grid, size };
+        };
+
+        // --- COMPONENTS ---
+
+        const ParticleSystem = ({ particles }) => {
+            return (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-40">
+                    {particles.map(p => (
+                        <div 
+                            key={p.id}
+                            className="particle"
+                            style={{
+                                left: p.x,
+                                top: p.y,
+                                width: p.size,
+                                height: p.size,
+                                backgroundColor: p.color,
+                                '--tx': `${p.vx * 100}px`,
+                                '--ty': `${p.vy * 100}px`
+                            }}
+                        />
+                    ))}
+                </div>
+            );
+        };
+
+        const LeaderboardModal = ({ isOpen, onClose, user, score, level }) => {
+            const [scores, setScores] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [submitStatus, setSubmitStatus] = useState('idle');
+
+            useEffect(() => {
+                if (!isOpen || !user) return;
+                
+                // Firestore: Public Score Collection
+                const q = collection(db, 'artifacts', appId, 'public', 'data', 'scores_v3');
+                
+                const unsubscribe = onSnapshot(q, (snapshot) => {
+                    const rawData = [];
+                    snapshot.forEach(doc => rawData.push({ id: doc.id, ...doc.data() }));
+                    const sorted = rawData.sort((a, b) => b.score - a.score).slice(0, 10);
+                    setScores(sorted);
+                    setLoading(false);
+                }, (error) => {
+                    console.error("Error fetching scores:", error);
+                    setLoading(false);
+                });
+
+                return () => unsubscribe();
+            }, [isOpen, user]);
+
+            const submitScore = async () => {
+                if (!user) return;
+                setSubmitStatus('submitting');
+                try {
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'scores_v3'), {
+                        userId: user.uid,
+                        username: `Operative-${user.uid.substr(0, 4).toUpperCase()}`,
+                        score: score,
+                        level: level,
+                        timestamp: Date.now()
+                    });
+                    setSubmitStatus('done');
+                } catch (e) {
+                    console.error(e);
+                    setSubmitStatus('idle');
+                }
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md p-6 relative shadow-[0_0_50px_rgba(239,68,68,0.2)]">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-zinc-500 hover:text-white"><i className="ph-bold ph-x text-xl"></i></button>
+                        
+                        <h2 className="text-xl font-black italic tracking-tighter text-white mb-6 flex items-center gap-2">
+                            <i className="ph-duotone ph-trophy text-yellow-500"></i> NETWORK ELITE
+                        </h2>
+
+                        <div className="space-y-2 mb-6 max-h-[40vh] overflow-y-auto custom-scrollbar">
+                            {loading ? (
+                                <div className="text-center text-zinc-500 py-4 font-mono text-xs animate-pulse">UPLOADING PROTOCOLS...</div>
+                            ) : (
+                                scores.map((s, idx) => (
+                                    <div key={s.id} className={`flex justify-between items-center p-3 rounded bg-white/5 border ${s.userId === user?.uid ? 'border-red-500/50 bg-red-500/10' : 'border-white/5'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <span className={`font-mono font-bold text-sm ${idx < 3 ? 'text-yellow-400' : 'text-zinc-500'}`}>#{idx + 1}</span>
+                                            <span className="font-bold text-sm text-zinc-300">{s.username}</span>
+                                        </div>
+                                        <div className="flex flex-col items-end">
+                                            <span className="font-mono font-bold text-white">{s.score.toLocaleString()}</span>
+                                            <span className="text-[10px] text-zinc-500 font-mono">SEC-{s.level}</span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {submitStatus === 'done' ? (
+                            <div className="w-full py-3 bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 rounded text-center font-bold text-xs tracking-widest uppercase">
+                                Score Synced
+                            </div>
+                        ) : (
+                            <button 
+                                onClick={submitScore} 
+                                disabled={submitStatus === 'submitting'}
+                                className="w-full py-3 bg-white text-black hover:bg-zinc-200 font-bold uppercase tracking-widest text-xs rounded transition-colors disabled:opacity-50"
+                            >
+                                {submitStatus === 'submitting' ? 'Encrypting...' : 'Upload Data'}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const LevelTransition = ({ level, onComplete }) => {
+            const [progress, setProgress] = useState(0);
+
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setProgress(p => {
+                        if (p >= 100) {
+                            clearInterval(interval);
+                            setTimeout(onComplete, 200);
+                            return 100;
+                        }
+                        return p + 4; // Speed of load
+                    });
+                }, 30);
+                return () => clearInterval(interval);
+            }, []);
+
+            return (
+                <div className="absolute inset-0 z-[60] bg-black flex flex-col items-center justify-center pointer-events-none">
+                    <div className="text-4xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-white mb-2 tracking-tighter">
+                        SECTOR {level}
+                    </div>
+                    <div className="w-64 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-red-500" style={{ width: `${progress}%` }}></div>
+                    </div>
+                    <div className="mt-2 font-mono text-[10px] text-zinc-500">
+                        INITIALIZING PROTOCOL... {progress}%
+                    </div>
+                </div>
+            );
+        };
+
+        function ArrowProtocol() {
+            // State
+            const [user, setUser] = useState(null);
+            const [size, setSize] = useState(4);
+            const [grid, setGrid] = useState([]);
+            const [score, setScore] = useState(0);
+            const [level, setLevel] = useState(1);
+            const [gameState, setGameState] = useState('playing'); // playing, won, transitioning
+            const [shakingId, setShakingId] = useState(null);
+            const [combo, setCombo] = useState(0);
+            const [particles, setParticles] = useState([]);
+            const [showLeaderboard, setShowLeaderboard] = useState(false);
+            const [isTransitioning, setIsTransitioning] = useState(false);
+            
+            // Refs
+            const comboTimer = useRef(null);
+
+            // Auth Init
+            useEffect(() => {
+                const initAuth = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                };
+                initAuth();
+                const unsubscribe = onAuthStateChanged(auth, setUser);
+                return () => unsubscribe();
+            }, []);
+
+            // Initial Level
+            useEffect(() => {
+                startLevel(1);
+            }, []);
+
+            const startLevel = (lvl) => {
+                const { grid: newGrid, size: newSize } = generateLevel(lvl);
+                setSize(newSize);
+                setGrid(newGrid);
+                setGameState('playing');
+                AudioEngine.playLevelStart();
+            };
+
+            const triggerParticles = (e, color = '#ef4444') => {
+                if (!e) return;
+                const rect = e.target.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                const newParticles = Array.from({ length: 8 }).map((_, i) => ({
+                    id: Date.now() + i + Math.random(),
+                    x: centerX,
+                    y: centerY,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: (Math.random() - 0.5) * 3,
+                    size: Math.random() * 5 + 2,
+                    color: color
+                }));
+
+                setParticles(prev => [...prev, ...newParticles]);
+                setTimeout(() => {
+                    setParticles(prev => prev.filter(p => !newParticles.includes(p)));
+                }, 800);
+            };
+
+            const handleBlockClick = (r, c, e) => {
+                AudioEngine.init();
+
+                const block = grid[r][c];
+                if (!block || block.status !== 'active') return;
+
+                const { dr, dc, anim } = DIRS[block.dir];
+                let blocked = false;
+
+                // Check path
+                let nr = r + dr;
+                let nc = c + dc;
+                while (nr >= 0 && nr < size && nc >= 0 && nc < size) {
+                    const obstacle = grid[nr][nc];
+                    if (obstacle && obstacle.status !== 'gone') {
+                        blocked = true;
+                        break;
+                    }
+                    nr += dr;
+                    nc += dc;
+                }
+
+                if (blocked) {
+                    setShakingId(block.id);
+                    AudioEngine.playError();
+                    setCombo(0);
+                    setTimeout(() => setShakingId(null), 300);
+                } else {
+                    const isGold = block.color === 'gold';
+                    const basePoints = isGold ? 50 : 10;
+                    const comboMultiplier = 1 + (combo * 0.15); // Higher combo bonus
+                    const points = Math.floor(basePoints * comboMultiplier);
+
+                    setCombo(c => c + 1);
+                    if (comboTimer.current) clearTimeout(comboTimer.current);
+                    comboTimer.current = setTimeout(() => setCombo(0), 1200);
+
+                    AudioEngine.playClear(combo);
+                    triggerParticles(e, isGold ? '#fbbf24' : '#ef4444');
+
+                    const newGrid = [...grid];
+                    newGrid[r] = [...grid[r]];
+                    newGrid[r][c] = { ...block, status: 'flying', animClass: anim };
+                    setGrid(newGrid);
+                    setScore(s => s + points);
+
+                    setTimeout(() => {
+                        setGrid(prevGrid => {
+                            const g = prevGrid.map(row => [...row]);
+                            if (g[r][c] && g[r][c].id === block.id) {
+                                g[r][c] = { ...g[r][c], status: 'gone' };
+                            }
+                            
+                            // Check Win
+                            const remaining = g.flat().filter(cell => cell && cell.status !== 'gone').length;
+                            if (remaining === 0) {
+                                AudioEngine.playWin();
+                                setGameState('won');
+                            }
+                            return g;
+                        });
+                    }, 400);
+                }
+            };
+
+            const goToNextLevel = () => {
+                const nextLvl = level + 1;
+                setLevel(nextLvl);
+                setGameState('transitioning');
+            };
+
+            const onTransitionComplete = () => {
+                startLevel(level);
+            };
+
+            return (
+                <div className="min-h-screen w-full flex flex-col items-center pt-20 px-4 relative touch-none bg-black overflow-hidden">
+                    
+                    {/* Background Ambience */}
+                    <div className="fixed inset-0 z-0 bg-grid opacity-20 pointer-events-none"></div>
+                    <div className="fixed top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-red-600/10 rounded-full blur-[100px] pointer-events-none animate-pulse"></div>
+                    <div className="fixed bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-blue-600/5 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+
+                    <ParticleSystem particles={particles} />
+
+                    {/* Navbar */}
+                    <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 backdrop-blur-md border-b border-white/5 flex justify-between items-center bg-black/60">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+                                <i className="ph-fill ph-triangle text-red-500"></i>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-bold text-white leading-none text-sm tracking-widest glitch-text" data-text="GOD'S PLAN">GOD'S PLAN</span>
+                                <span className="text-[9px] text-zinc-500 font-mono">SECURE PROTOCOL</span>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => setShowLeaderboard(true)}
+                            className="bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded text-xs font-mono text-zinc-300 transition-colors flex items-center gap-2"
+                        >
+                            <i className="ph-bold ph-trophy"></i> RANKING
+                        </button>
+                    </nav>
+
+                    {/* Transition Overlay */}
+                    {gameState === 'transitioning' && (
+                        <LevelTransition level={level} onComplete={onTransitionComplete} />
+                    )}
+
+                    {/* Game Container */}
+                    <div className="z-10 w-full max-w-md flex flex-col items-center relative mt-6">
+                        
+                        {/* HUD */}
+                        <div className="w-full flex justify-between items-end mb-6">
+                            <div>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-4xl font-black text-white italic tracking-tighter">
+                                        {score.toLocaleString()}
+                                    </span>
+                                    <span className="text-xs text-zinc-500 font-mono">PTS</span>
+                                </div>
+                                <div className={`h-1 bg-gradient-to-r from-red-500 to-orange-500 transition-all duration-300 mt-1 rounded-full`} style={{ width: `${Math.min(combo * 10, 100)}%`, opacity: combo > 0 ? 1 : 0 }}></div>
+                            </div>
+
+                            <div className="flex flex-col items-end">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                    <span className="text-xs text-white font-bold tracking-widest uppercase">Sector {level}</span>
+                                </div>
+                                {combo > 1 && (
+                                    <div className="animate-bounce text-yellow-400 font-black italic text-xl drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]">
+                                        {combo}x COMBO
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Victory Modal */}
+                        {gameState === 'won' && (
+                            <div className="absolute inset-0 z-50 flex items-center justify-center">
+                                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-xl"></div>
+                                <div className="relative bg-zinc-900 border border-emerald-500/30 p-8 rounded-xl flex flex-col items-center text-center shadow-[0_0_40px_rgba(16,185,129,0.2)] w-[90%] animate-[pulse-ring_0.3s_ease-out_reverse]">
+                                    <i className="ph-fill ph-check-circle text-emerald-500 text-6xl mb-4 shadow-emerald-500/50 drop-shadow-lg"></i>
+                                    <h2 className="text-3xl font-black text-white italic tracking-tighter mb-1">CLEARED</h2>
+                                    <p className="text-zinc-400 text-xs font-mono mb-6">Sector {level} Securized</p>
+                                    
+                                    <button onClick={goToNextLevel} className="w-full bg-white hover:bg-zinc-200 text-black font-bold py-3 rounded text-sm uppercase tracking-widest transition-transform hover:scale-105 active:scale-95 shadow-lg">
+                                        Next Sector
+                                    </button>
+                                    <button onClick={() => setShowLeaderboard(true)} className="mt-4 text-xs text-zinc-500 hover:text-white underline decoration-zinc-700 underline-offset-4">
+                                        Upload Score
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Grid */}
+                        <div 
+                            className="game-grid p-2 rounded-xl relative transition-all duration-500"
+                            style={{ 
+                                gridTemplateColumns: `repeat(${size}, 1fr)`,
+                                width: 'min(90vw, 360px)',
+                                height: 'min(90vw, 360px)'
+                            }}
+                        >
+                            {/* Grid Background */}
+                            <div className="absolute inset-0 bg-zinc-900/50 rounded-xl border border-white/5 backdrop-blur-sm"></div>
+
+                            {/* Grid Border Accents */}
+                            <div className="absolute -inset-1 border border-white/10 rounded-xl pointer-events-none"></div>
+                            <div className="absolute -inset-1 border-t border-l border-white/20 rounded-xl pointer-events-none opacity-50"></div>
+                            <div className="absolute -bottom-2 -right-2 w-4 h-4 border-b-2 border-r-2 border-red-500 pointer-events-none"></div>
+                            <div className="absolute -top-2 -left-2 w-4 h-4 border-t-2 border-l-2 border-red-500 pointer-events-none"></div>
+
+                            {grid.map((row, r) => (
+                                row.map((block, c) => {
+                                    if (!block || block.status === 'gone') return <div key={`${r}-${c}`} className="pointer-events-none"></div>;
+                                    
+                                    const isShaking = shakingId === block.id;
+                                    const isFlying = block.status === 'flying';
+                                    const isGold = block.color === 'gold';
+                                    
+                                    return (
+                                        <div
+                                            key={block.id}
+                                            onClick={(e) => handleBlockClick(r, c, e)}
+                                            className={`
+                                                relative w-full h-full rounded-md flex items-center justify-center cursor-pointer 
+                                                transition-all duration-200 active:scale-90
+                                                bg-zinc-800/80 backdrop-blur-md border border-white/10
+                                                group
+                                                ${isShaking ? 'shaking' : ''}
+                                                ${isFlying ? `z-50 pointer-events-none ${block.animClass}` : 'z-10'}
+                                                ${isGold ? 'shadow-[0_0_15px_rgba(251,191,36,0.2)] border-yellow-500/30' : 'hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:border-red-500/50'}
+                                            `}
+                                        >
+                                            <div className={`absolute inset-0 bg-gradient-to-br ${isGold ? 'from-yellow-900/40 to-yellow-600/20' : 'from-red-900/20 to-zinc-900'} opacity-50 rounded-md`}></div>
+                                            
+                                            <i 
+                                                className={`
+                                                    ph-bold ph-arrow-right transition-all duration-300
+                                                    ${size > 5 ? 'text-xl' : 'text-2xl sm:text-3xl'}
+                                                    ${isShaking ? 'text-red-500' : isGold ? 'text-yellow-400' : 'text-zinc-400 group-hover:text-white'}
+                                                `}
+                                                style={{ 
+                                                    transform: `rotate(${DIRS[block.dir].deg}deg)`,
+                                                    filter: isFlying ? 'drop-shadow(0 0 10px white)' : 'none'
+                                                }}
+                                            ></i>
+                                        </div>
+                                    );
+                                })
+                            ))}
+                        </div>
+
+                        {/* Reset */}
+                        <button onClick={() => startLevel(level)} className="mt-8 flex items-center gap-2 text-zinc-600 hover:text-red-500 transition-colors text-[10px] font-bold uppercase tracking-widest group">
+                            <i className="ph-bold ph-arrows-clockwise group-hover:rotate-180 transition-transform duration-500"></i> Reboot Sector
+                        </button>
+                    </div>
+
+                    <LeaderboardModal 
+                        isOpen={showLeaderboard} 
+                        onClose={() => setShowLeaderboard(false)} 
+                        user={user}
+                        score={score}
+                        level={level}
+                    />
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ArrowProtocol />);
+    </script>
+</body>
+</html>
