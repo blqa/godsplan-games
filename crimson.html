@@ -272,59 +272,60 @@
                 return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
             };
 
+            // Grid size ajustado a ser más pequeño (Compact Mode)
             const getGridClass = () => {
-                if (size === 3) return 'grid-cols-3 w-[300px] h-[300px] sm:w-[360px] sm:h-[360px]';
-                if (size === 4) return 'grid-cols-4 w-[300px] h-[300px] sm:w-[400px] sm:h-[400px]';
-                if (size === 5) return 'grid-cols-5 w-[300px] h-[300px] sm:w-[450px] sm:h-[450px]';
+                if (size === 3) return 'grid-cols-3 w-[280px] h-[280px] sm:w-[320px] sm:h-[320px]';
+                if (size === 4) return 'grid-cols-4 w-[280px] h-[280px] sm:w-[350px] sm:h-[350px]';
+                if (size === 5) return 'grid-cols-5 w-[280px] h-[280px] sm:w-[380px] sm:h-[380px]';
                 return 'grid-cols-4';
             };
 
             return (
                 <div 
-                    className="min-h-screen bg-[#050000] text-white font-sans flex flex-col items-center py-6 px-4 select-none relative overflow-hidden touch-none pt-24"
+                    className="min-h-screen bg-[#050000] text-white font-sans flex flex-col items-center px-4 select-none relative overflow-hidden touch-none pt-20"
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
                 >
                     
                     {/* --- NAVBAR --- */}
-                    <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 backdrop-blur-md border-b border-white/5 bg-black/40">
+                    <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-3 backdrop-blur-md border-b border-white/5 bg-black/40">
                         <div className="max-w-7xl mx-auto flex justify-between items-center">
                             
                             {/* Logo */}
                             <a href="https://games.godsplan.site" className="flex items-center gap-3 cursor-pointer group no-underline">
-                                <div className="relative w-9 h-9 flex items-center justify-center overflow-hidden rounded-full bg-zinc-900 border border-zinc-800 group-hover:border-red-500/50 transition-colors">
-                                    <i className="ph-duotone ph-planet text-red-500 text-2xl relative z-10 group-hover:rotate-180 transition-transform duration-700 ease-in-out"></i>
+                                <div className="relative w-8 h-8 flex items-center justify-center overflow-hidden rounded-full bg-zinc-900 border border-zinc-800 group-hover:border-red-500/50 transition-colors">
+                                    <i className="ph-duotone ph-planet text-red-500 text-xl relative z-10 group-hover:rotate-180 transition-transform duration-700 ease-in-out"></i>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="font-bold tracking-tight text-white leading-none group-hover:text-red-500 transition-colors">GOD'S PLAN</span>
-                                    <span className="text-[9px] text-zinc-500 font-mono tracking-widest uppercase">Nexus Hub v4.1</span>
+                                    <span className="font-bold tracking-tight text-white leading-none text-sm group-hover:text-red-500 transition-colors">GOD'S PLAN</span>
+                                    <span className="text-[8px] text-zinc-500 font-mono tracking-widest uppercase">Nexus Hub v4.1</span>
                                 </div>
                             </a>
 
                             {/* Right Controls */}
-                            <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-4">
                                 {/* Clock */}
-                                <div className="hidden md:flex flex-col items-end text-right border-r border-white/10 pr-6">
-                                    <span id="sys-time" className="font-mono text-xs text-zinc-300 font-bold">
+                                <div className="hidden md:flex flex-col items-end text-right border-r border-white/10 pr-4">
+                                    <span id="sys-time" className="font-mono text-[10px] text-zinc-300 font-bold">
                                         {currentDate.toLocaleTimeString('en-US', { hour12: false })}
                                     </span>
-                                    <span id="sys-date" className="text-[10px] text-zinc-600 uppercase tracking-widest">
+                                    <span id="sys-date" className="text-[9px] text-zinc-600 uppercase tracking-widest">
                                         {currentDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}
                                     </span>
                                 </div>
 
                                 {/* Status */}
-                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/30 border border-emerald-500/20">
-                                    <span className="relative flex h-2 w-2">
+                                <div className="flex items-center gap-2 px-2 py-0.5 rounded-full bg-emerald-950/30 border border-emerald-500/20">
+                                    <span className="relative flex h-1.5 w-1.5">
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                                     </span>
-                                    <span className="hidden sm:block text-[10px] font-bold text-emerald-500 tracking-wider">ONLINE</span>
+                                    <span className="hidden sm:block text-[9px] font-bold text-emerald-500 tracking-wider">ONLINE</span>
                                 </div>
 
                                 {/* Contact */}
-                                <a href="https://games.godsplan.site" className="w-9 h-9 flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all border border-white/10 group">
-                                    <i className="ph-bold ph-paper-plane-right group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform text-lg"></i>
+                                <a href="https://games.godsplan.site" className="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all border border-white/10 group">
+                                    <i className="ph-bold ph-paper-plane-right group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform text-base"></i>
                                 </a>
                             </div>
                         </div>
@@ -336,54 +337,54 @@
                         <div className="absolute bottom-[-10%] right-[-20%] w-[60%] h-[60%] bg-red-800/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
                     </div>
 
-                    <div className="z-10 w-full max-w-lg flex flex-col items-center relative">
+                    <div className="z-10 w-full max-w-md flex flex-col items-center relative mt-2">
                         
-                        {/* Header */}
-                        <div className="w-full flex justify-between items-start mb-6">
+                        {/* Header Compacto */}
+                        <div className="w-full flex justify-between items-end mb-4">
                             <div>
-                                <h1 className="text-4xl md:text-5xl font-black tracking-tighter italic text-red-500 drop-shadow-[0_0_15px_rgba(220,38,38,0.6)]">
+                                <h1 className="text-3xl md:text-4xl font-black tracking-tighter italic text-red-500 drop-shadow-[0_0_15px_rgba(220,38,38,0.6)] leading-none">
                                     CRIMSON
                                 </h1>
-                                <p className="text-white/60 text-sm font-mono tracking-widest">SLIDE PUZZLE</p>
+                                <p className="text-white/60 text-xs font-mono tracking-widest mt-1">SLIDE PUZZLE</p>
                             </div>
                             
-                            <div className="flex gap-3">
-                                <div className="bg-white/10 backdrop-blur-md rounded-lg p-2 min-w-[70px] flex flex-col items-center border border-white/5">
-                                    <span className="text-[10px] text-red-200 font-bold uppercase tracking-wider">Moves</span>
-                                    <span className="text-xl font-bold text-white">{moves}</span>
+                            <div className="flex gap-2">
+                                <div className="bg-white/10 backdrop-blur-md rounded-lg p-1.5 min-w-[60px] flex flex-col items-center border border-white/5">
+                                    <span className="text-[9px] text-red-200 font-bold uppercase tracking-wider">Moves</span>
+                                    <span className="text-lg font-bold text-white leading-none">{moves}</span>
                                 </div>
-                                <div className="bg-white/10 backdrop-blur-md rounded-lg p-2 min-w-[70px] flex flex-col items-center border border-white/5">
-                                    <span className="text-[10px] text-red-200 font-bold uppercase tracking-wider">Best</span>
-                                    <span className="text-xl font-bold text-white">{bestScore > 0 ? bestScore : '-'}</span>
+                                <div className="bg-white/10 backdrop-blur-md rounded-lg p-1.5 min-w-[60px] flex flex-col items-center border border-white/5">
+                                    <span className="text-[9px] text-red-200 font-bold uppercase tracking-wider">Best</span>
+                                    <span className="text-lg font-bold text-white leading-none">{bestScore > 0 ? bestScore : '-'}</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Action Bar */}
-                        <div className="w-full flex justify-between items-center mb-6 bg-white/5 p-2 rounded-xl border border-white/5 backdrop-blur-sm">
+                        {/* Action Bar Compacta */}
+                        <div className="w-full flex justify-between items-center mb-4 bg-white/5 p-1.5 rounded-lg border border-white/5 backdrop-blur-sm">
                             <div className="flex gap-1">
                                 {[3, 4, 5].map((s) => (
                                 <button 
                                     key={s}
                                     onClick={() => setSize(s)}
-                                    className={`h-8 w-10 flex items-center justify-center rounded-md transition-all duration-300 ${size === s ? 'bg-red-600 text-white shadow-lg shadow-red-900/50' : 'text-gray-500 hover:bg-white/10'}`}
+                                    className={`h-7 w-8 flex items-center justify-center rounded transition-all duration-300 ${size === s ? 'bg-red-600 text-white shadow-lg shadow-red-900/50' : 'text-gray-500 hover:bg-white/10'}`}
                                 >
-                                    <span className="font-bold text-xs">{s}x{s}</span>
+                                    <span className="font-bold text-[10px]">{s}x{s}</span>
                                 </button>
                                 ))}
                             </div>
 
-                            <div className="flex gap-3">
+                            <div className="flex gap-2">
                                 <button 
                                     onClick={() => setIsBlindMode(!isBlindMode)}
-                                    className={`p-2 rounded-md transition-colors ${isBlindMode ? 'text-red-400 bg-red-900/20' : 'text-gray-400 hover:text-white'}`}
+                                    className={`p-1.5 rounded transition-colors ${isBlindMode ? 'text-red-400 bg-red-900/20' : 'text-gray-400 hover:text-white'}`}
                                     title="Modo Ciego"
                                 >
-                                    {isBlindMode ? <i className="ph ph-eye-slash text-lg"></i> : <i className="ph ph-eye text-lg"></i>} 
+                                    {isBlindMode ? <i className="ph ph-eye-slash text-base"></i> : <i className="ph ph-eye text-base"></i>} 
                                 </button>
                                 <button 
                                     onClick={() => startNewGame(size)}
-                                    className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-4 py-1.5 rounded-md font-bold text-sm shadow-[0_0_15px_rgba(220,38,38,0.4)] transition-all active:scale-95"
+                                    className="flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded font-bold text-xs shadow-[0_0_15px_rgba(220,38,38,0.4)] transition-all active:scale-95"
                                 >
                                     <i className="ph-bold ph-arrows-clockwise"></i> NEW GAME
                                 </button>
@@ -391,35 +392,35 @@
                         </div>
 
                         {/* Board Container */}
-                        <div className="relative p-3 bg-gray-900/80 backdrop-blur-xl rounded-xl border border-white/10 shadow-2xl ring-1 ring-white/5">
+                        <div className="relative p-2 bg-gray-900/80 backdrop-blur-xl rounded-xl border border-white/10 shadow-2xl ring-1 ring-white/5">
                             
                             {/* Victory Overlay */}
                             {gameState === 'won' && (
                             <div className="absolute inset-0 z-20 bg-black/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
-                                <i className="ph-fill ph-trophy text-yellow-500 text-6xl mb-4 drop-shadow-[0_0_25px_rgba(234,179,8,0.6)] animate-bounce"></i>
-                                <h2 className="text-4xl font-black text-white mb-2 italic">YOU WIN!</h2>
-                                <div className="flex gap-6 mb-6 text-sm font-mono text-gray-300">
+                                <i className="ph-fill ph-trophy text-yellow-500 text-5xl mb-3 drop-shadow-[0_0_25px_rgba(234,179,8,0.6)] animate-bounce"></i>
+                                <h2 className="text-3xl font-black text-white mb-2 italic">YOU WIN!</h2>
+                                <div className="flex gap-6 mb-5 text-xs font-mono text-gray-300">
                                     <div className="flex flex-col items-center">
-                                        <span className="text-xs uppercase text-gray-500">Time</span>
-                                        <span className="text-xl text-white">{formatTime(time)}</span>
+                                        <span className="text-[10px] uppercase text-gray-500">Time</span>
+                                        <span className="text-lg text-white">{formatTime(time)}</span>
                                     </div>
                                     <div className="flex flex-col items-center">
-                                        <span className="text-xs uppercase text-gray-500">Moves</span>
-                                        <span className="text-xl text-white">{moves}</span>
+                                        <span className="text-[10px] uppercase text-gray-500">Moves</span>
+                                        <span className="text-lg text-white">{moves}</span>
                                     </div>
                                 </div>
                                 <button 
                                 onClick={() => startNewGame(size)}
-                                className="px-8 py-3 bg-white text-black rounded-lg font-black uppercase tracking-widest hover:bg-gray-200 transition-transform active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+                                className="px-6 py-2 bg-white text-black rounded font-black uppercase tracking-widest text-sm hover:bg-gray-200 transition-transform active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)]"
                                 >
                                     Try Again
                                 </button>
                             </div>
                             )}
 
-                            <div className={`grid gap-2 sm:gap-3 transition-all duration-300 ${getGridClass()}`}>
+                            <div className={`grid gap-2 transition-all duration-300 ${getGridClass()}`}>
                             {board.map((num, index) => {
-                                if (num === 0) return <div key="empty" className="w-full h-full rounded-lg bg-black/40 inner-shadow"></div>;
+                                if (num === 0) return <div key="empty" className="w-full h-full rounded-md bg-black/40 inner-shadow"></div>;
                                 
                                 const isCorrectPos = num === index + 1;
                                 const isShaking = shakingTile === index;
@@ -429,7 +430,7 @@
                                     key={num}
                                     onClick={() => moveTile(index)}
                                     className={`
-                                    w-full h-full rounded-lg text-2xl sm:text-4xl font-black flex items-center justify-center relative cursor-pointer select-none transition-all duration-150 transform
+                                    w-full h-full rounded-md text-xl sm:text-3xl font-black flex items-center justify-center relative cursor-pointer select-none transition-all duration-150 transform
                                     ${isShaking ? 'animate-[shake_0.4s_ease-in-out]' : ''}
                                     ${isCorrectPos 
                                         ? 'bg-gradient-to-br from-red-500 to-red-700 shadow-[0_0_15px_rgba(220,38,38,0.3)] text-white border border-red-400/30' 
@@ -443,7 +444,7 @@
                                     
                                     {/* Blind Mode Dot */}
                                     {isBlindMode && (
-                                        <div className={`absolute w-2 h-2 rounded-full ${isCorrectPos ? 'bg-white shadow-[0_0_8px_white]' : 'bg-gray-600'}`}></div>
+                                        <div className={`absolute w-1.5 h-1.5 rounded-full ${isCorrectPos ? 'bg-white shadow-[0_0_8px_white]' : 'bg-gray-600'}`}></div>
                                     )}
                                 </div>
                                 );
@@ -452,8 +453,8 @@
                         </div>
                         
                         {/* Footer Info */}
-                        <div className="mt-6 flex justify-between w-full text-xs text-gray-500 font-mono px-2">
-                            <div className="flex items-center gap-4">
+                        <div className="mt-4 flex justify-between w-full text-[10px] text-gray-500 font-mono px-2">
+                            <div className="flex items-center gap-3">
                                 <span className="flex items-center gap-1"><i className="ph-bold ph-clock"></i> {formatTime(time)}</span>
                                 <button onClick={undoMove} disabled={history.length === 0} className="flex items-center gap-1 hover:text-red-400 disabled:opacity-30 transition-colors">
                                     <i className="ph-bold ph-arrow-counter-clockwise"></i> UNDO
