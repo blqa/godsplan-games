@@ -2,576 +2,727 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Arrow Puzzle - Clean UX</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Arrow Zen</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --bg-color: #f8fafc;
+            --surface: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
 
         body {
-            font-family: 'DM Sans', sans-serif;
-            background-color: #f3f4f6;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             touch-action: none;
             overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
-            color: #111827;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* Contenedor del tablero */
-        .game-container {
-            display: grid;
-            gap: 6px; 
-            width: 100%;
-            max-width: 380px;
-            aspect-ratio: 1;
-            margin: 0 auto;
-            background: #e5e7eb; /* Gris neutro suave */
-            padding: 8px;
-            border-radius: 24px;
-            position: relative;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            box-shadow: 
-                0 10px 15px -3px rgba(0, 0, 0, 0.1), 
-                0 4px 6px -2px rgba(0, 0, 0, 0.05),
-                inset 0 2px 4px rgba(0,0,0,0.05);
+        /* --- UI ELEMENTS --- */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
         }
 
-        /* Celdas de fondo */
-        .grid-bg-cell {
-            background-color: #ffffff;
-            border-radius: 10px;
-            width: 100%;
-            height: 100%;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        .btn-press {
+            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s;
+        }
+        .btn-press:active {
+            transform: scale(0.92);
         }
 
-        /* CONTENEDOR DE FLECHA */
-        .arrow-item {
-            position: relative;
-            z-index: 20;
+        /* --- GAME BOARD --- */
+        .game-wrapper {
+            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            -webkit-tap-highlight-color: transparent;
-            /* Permite clickear A TRAVÉS de los huecos vacíos del div */
-            pointer-events: none; 
-            transition: transform 0.15s ease-out;
+            position: relative;
+            padding: 20px;
         }
 
-        /* SVG */
+        .game-board {
+            display: grid;
+            gap: 8px; /* Espacio fijo entre celdas */
+            width: 100%;
+            max-width: 360px;
+            aspect-ratio: 1; /* Mantiene el tablero cuadrado */
+            background: #e2e8f0;
+            padding: 12px;
+            border-radius: 28px;
+            position: relative;
+            box-shadow: 
+                inset 0 2px 6px rgba(0,0,0,0.06),
+                0 20px 25px -5px rgba(0, 0, 0, 0.05);
+            
+            /* CRITICAL FIX: Force rigid grid tracks */
+            grid-auto-rows: minmax(0, 1fr);
+            grid-auto-columns: minmax(0, 1fr);
+        }
+
+        .grid-cell {
+            background-color: var(--surface);
+            border-radius: 14px;
+            width: 100%;
+            height: 100%;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        /* --- ARROWS --- */
+        .arrow-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            /* Asegura que el contenedor no expanda el grid */
+            min-width: 0;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         .arrow-svg {
             width: 100%;
             height: 100%;
+            display: block;
             overflow: visible;
-            /* Sombra suave y elevada */
-            filter: drop-shadow(0px 4px 3px rgba(0,0,0,0.15));
-            /* Captura clicks solo en la línea dibujada */
-            pointer-events: visiblePainted; 
+            filter: drop-shadow(0px 4px 6px rgba(99, 102, 241, 0.15));
+            pointer-events: auto;
             cursor: pointer;
             transition: filter 0.2s;
         }
 
-        /* Estilo de la línea */
-        .arrow-path {
-            fill: none;
-            stroke: #1f2937; /* Gray-800: Negro suave, menos agresivo */
-            stroke-width: 22; /* Más grueso para presencia visual */
+        .arrow-body {
+            fill: var(--primary);
+            stroke: var(--primary);
+            stroke-width: 16;
             stroke-linecap: round;
             stroke-linejoin: round;
-            transition: stroke 0.2s;
-        }
-
-        /* Estado Bloqueado (Rojo) */
-        .blocked .arrow-path {
-            stroke: #ef4444; /* Rojo error */
+            transition: fill 0.3s, stroke 0.3s;
         }
         
-        /* Animación Shake (Error) */
-        @keyframes shake {
-            0%, 100% { transform: translate(0, 0); }
-            15% { transform: translate(-4px, 0); }
-            30% { transform: translate(4px, 0); }
-            45% { transform: translate(-4px, 0); }
-            60% { transform: translate(4px, 0); }
-        }
-        .shake-anim {
-            animation: shake 0.4s ease-in-out;
+        .arrow-highlight {
+            fill: rgba(255,255,255,0.2);
+            stroke: none;
         }
 
-        /* Animaciones de Salida */
-        /* Usamos 'forwards' para mantener el estado final */
-        @keyframes flyOut {
-            0% { transform: translate(0,0) scale(1); opacity: 1; }
-            40% { transform: translate(var(--tx), var(--ty)) scale(0.9); opacity: 1; }
-            100% { transform: translate(var(--endX), var(--endY)) scale(1.1); opacity: 0; }
+        /* Animations & States */
+        .blocked-shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        
+        .is-blocking .arrow-body {
+            stroke: var(--danger) !important;
+            fill: var(--danger) !important;
         }
 
-        .flying {
-            /* Las variables CSS se setean en JS según dirección */
-            animation: flyOut 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            pointer-events: none !important;
+        .flying-out {
             z-index: 50;
+            pointer-events: none !important;
+            transition: transform 0.6s cubic-bezier(0.5, 0, 0.1, 1), opacity 0.4s ease-in 0.2s;
+            transform: translate(var(--endX), var(--endY)) scale(0.5) !important;
+            opacity: 0;
         }
 
-        .ui-panel {
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+            40%, 60% { transform: translate3d(3px, 0, 0); }
+        }
+
+        /* --- OVERLAYS --- */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-            border: 1px solid #f3f4f6;
+            width: 85%;
+            max-width: 320px;
+            padding: 32px;
+            border-radius: 32px;
+            text-align: center;
+            transform: translateY(20px) scale(0.95);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        .modal-overlay.active .modal-card {
+            transform: translateY(0) scale(1);
         }
 
-        .btn-icon {
-            transition: all 0.2s;
+        .star-icon {
+            color: #fbbf24;
+            filter: drop-shadow(0 2px 4px rgba(251, 191, 36, 0.3));
+            transform: scale(0);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .btn-icon:active { transform: scale(0.92); }
+        .star-icon.pop { transform: scale(1); }
 
+        #confetti-canvas { position: absolute; pointer-events: none; top: 0; left: 0; width: 100%; height: 100%; z-index: 40; }
+        
+        /* Loading Spinner */
         .loader {
-            width: 32px; height: 32px;
-            border: 4px solid #e5e7eb;
-            border-top-color: #111827;
+            width: 40px; height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top-color: var(--primary);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        #confetti-canvas {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 100;
-        }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4 text-slate-800">
-    <canvas id="confetti-canvas"></canvas>
+<body>
 
-    <header class="text-center mb-6">
-        <h1 class="text-4xl font-bold tracking-tight text-slate-900">Arrow Puzzle</h1>
-        <p class="text-slate-400 text-xs font-bold tracking-widest mt-1 uppercase">Clean Edition</p>
-    </header>
-
-    <!-- UI Stats -->
-    <div class="ui-panel flex justify-between items-center w-full max-w-[380px] mb-6 p-4">
-        <div class="flex items-center gap-4">
-            <div>
-                <span class="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Nivel</span>
-                <span id="level-num" class="text-3xl font-bold leading-none text-slate-800">1</span>
-            </div>
-            <div class="h-8 w-px bg-slate-100"></div>
-            <div>
-                 <span class="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tablero</span>
-                 <span id="grid-size-display" class="text-sm font-bold text-slate-500">5x5</span>
-            </div>
+    <!-- Header UI -->
+    <header class="pt-safe-top px-6 py-4 flex justify-between items-center w-full max-w-md mx-auto z-20">
+        <div class="flex flex-col">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">NIVEL</span>
+            <span id="level-display" class="text-3xl font-extrabold text-slate-800 leading-none">1</span>
         </div>
         
-        <div class="flex gap-2">
-            <button onclick="resetLevel()" class="btn-icon w-11 h-11 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/><path d="M3 3v9h9"/></svg>
+        <div class="flex gap-3">
+            <button onclick="Game.toggleSound()" id="sound-btn" class="btn-press glass-panel w-12 h-12 rounded-2xl flex items-center justify-center text-slate-600">
+                <!-- Volume Icon -->
+                <svg id="icon-sound-on" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                <svg id="icon-sound-off" class="hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
             </button>
-            <button onclick="generateNewLevel()" class="btn-icon w-11 h-11 flex items-center justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <button onclick="Game.restartLevel()" class="btn-press glass-panel w-12 h-12 rounded-2xl flex items-center justify-center text-slate-600">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/><path d="M3 3v9h9"/></svg>
             </button>
         </div>
-    </div>
+    </header>
 
-    <!-- Game Board -->
-    <div id="game-board" class="game-container">
-        <!-- Overlay de carga -->
-        <div class="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-50 rounded-2xl hidden transition-opacity duration-300" id="loading-overlay">
-            <div class="text-center">
-                <div class="loader mx-auto mb-3"></div>
-                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Generando...</span>
+    <!-- Game Area -->
+    <main class="game-wrapper">
+        <canvas id="confetti-canvas"></canvas>
+        
+        <div id="game-board" class="game-board">
+            <!-- Grid Background generated by JS -->
+            <div id="grid-bg-layer" class="absolute inset-0 p-3 grid gap-2 z-0 pointer-events-none"></div>
+            <!-- Loading Overlay -->
+            <div id="loading-overlay" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/90 rounded-3xl backdrop-blur transition-opacity duration-300">
+                <div class="loader mb-4"></div>
+                <div class="text-sm font-bold text-slate-400 tracking-widest uppercase">Diseñando Puzzle</div>
             </div>
         </div>
-    </div>
+    </main>
 
-    <div class="mt-8 text-center max-w-[280px] opacity-60">
-        <p class="text-slate-500 text-xs font-medium" id="hint-text">
-            Toca las flechas para liberarlas.
-        </p>
+    <!-- Footer / Hint -->
+    <footer class="pb-safe-bottom px-6 py-4 text-center z-10">
+        <p id="hint-text" class="text-slate-400 font-medium text-sm">Toca las flechas para liberarlas</p>
+    </footer>
+
+    <!-- Level Complete Modal -->
+    <div id="win-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="flex justify-center gap-2 mb-6">
+                <svg class="star-icon w-10 h-10" id="star-1" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg class="star-icon w-12 h-12 -mt-2" id="star-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg class="star-icon w-10 h-10" id="star-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <h2 class="text-2xl font-extrabold text-slate-800 mb-2">¡Completado!</h2>
+            <p class="text-slate-500 mb-8 font-medium">Puzzle resuelto con éxito</p>
+            
+            <button onclick="Game.nextLevel()" class="btn-press w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-200">
+                Siguiente Nivel
+            </button>
+        </div>
     </div>
 
     <script>
-        // --- CONSTANTES ---
-        const UP = 1, RIGHT = 2, DOWN = 3, LEFT = 4;
+        /**
+         * AUDIO SYSTEM (Web Audio API)
+         */
+        const AudioSys = {
+            ctx: null,
+            enabled: true,
+            init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+            playTone(freq, type, duration, vol = 0.1) {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+            pop() { this.init(); if(this.enabled) this.playTone(400, 'sine', 0.15, 0.15); },
+            whoosh() { this.init(); this.playTone(300, 'sine', 0.3, 0.05); },
+            error() { this.init(); this.playTone(150, 'triangle', 0.15, 0.15); },
+            win() {
+                this.init();
+                setTimeout(() => this.playTone(523.25, 'sine', 0.3, 0.1), 0);
+                setTimeout(() => this.playTone(659.25, 'sine', 0.3, 0.1), 100);
+                setTimeout(() => this.playTone(783.99, 'sine', 0.6, 0.1), 200);
+            }
+        };
+
+        const UP=1, RIGHT=2, DOWN=3, LEFT=4;
         
-        // --- ESTADO ---
-        let gridSize = 5;
-        let arrows = [];
-        let currentLevel = 1;
-        let savedArrows = []; 
+        const Game = {
+            gridSize: 5,
+            level: 1,
+            arrows: [],
+            savedArrows: [],
+            isAnimating: false,
 
-        // --- LÓGICA DE SOLUCIÓN (RAYCASTING) ---
-        function canEscape(arrow, allArrows) {
-            // Mapa de celdas ocupadas por OTRAS flechas
-            const occupied = new Set();
-            allArrows.forEach(a => {
-                if (a.id !== arrow.id) {
-                    a.occupiedIndices.forEach(idx => occupied.add(idx));
-                }
-            });
-
-            // Verificar cada segmento de la flecha
-            for (let cellIndex of arrow.occupiedIndices) {
-                if (!checkRay(cellIndex, arrow.dir, occupied)) return false;
-            }
-            return true;
-        }
-
-        function checkRay(startIndex, dir, occupiedSet) {
-            let r = Math.floor(startIndex / gridSize);
-            let c = startIndex % gridSize;
-            
-            // Mover un paso inicial
-            if (dir === UP) r--;
-            else if (dir === DOWN) r++;
-            else if (dir === LEFT) c--;
-            else if (dir === RIGHT) c++;
-
-            while (r >= 0 && r < gridSize && c >= 0 && c < gridSize) {
-                const idx = r * gridSize + c;
-                if (occupiedSet.has(idx)) return false; 
+            init() {
+                const savedLvl = localStorage.getItem('arrow-puzzle-level');
+                if(savedLvl) this.level = parseInt(savedLvl);
+                document.getElementById('level-display').innerText = this.level;
                 
-                if (dir === UP) r--;
-                else if (dir === DOWN) r++;
-                else if (dir === LEFT) c--;
-                else if (dir === RIGHT) c++;
-            }
-            return true;
-        }
+                // --- FIX: RIGID GRID SETUP ---
+                const bgLayer = document.getElementById('grid-bg-layer');
+                const board = document.getElementById('game-board');
+                
+                // Force strict tracks using minmax(0, 1fr)
+                const template = `repeat(${this.gridSize}, minmax(0, 1fr))`;
+                
+                bgLayer.style.gridTemplateColumns = template;
+                bgLayer.style.gridTemplateRows = template;
+                board.style.gridTemplateColumns = template;
+                board.style.gridTemplateRows = template;
 
-        function isSolvable(testArrows) {
-            let simArrows = JSON.parse(JSON.stringify(testArrows));
-            let changed = true;
-            while (changed && simArrows.length > 0) {
-                changed = false;
-                const indexToRemove = simArrows.findIndex(a => canEscape(a, simArrows));
-                if (indexToRemove !== -1) {
-                    simArrows.splice(indexToRemove, 1);
-                    changed = true;
+                bgLayer.innerHTML = '';
+                for(let i=0; i<this.gridSize*this.gridSize; i++) {
+                    const div = document.createElement('div');
+                    div.className = 'grid-cell';
+                    bgLayer.appendChild(div);
                 }
-            }
-            return simArrows.length === 0;
-        }
 
-        // --- GENERADOR DE NIVELES ---
-        async function createValidLevel(level) {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    // Dificultad progresiva
-                    let newSize = 5;
-                    if (level >= 4) newSize = 6;
-                    if (level >= 8) newSize = 7;
-                    gridSize = newSize;
+                this.generateLevel();
+            },
 
-                    const density = 0.60; // Un poco menos denso para que sea elegante
-                    const allowTurns = level >= 3; 
-                    const maxLen = level < 3 ? 2 : (level < 6 ? 3 : 5);
+            toggleSound() {
+                AudioSys.enabled = !AudioSys.enabled;
+                document.getElementById('icon-sound-on').classList.toggle('hidden');
+                document.getElementById('icon-sound-off').classList.toggle('hidden');
+                AudioSys.init();
+            },
+
+            async generateLevel() {
+                const overlay = document.getElementById('loading-overlay');
+                overlay.classList.remove('opacity-0', 'pointer-events-none');
+                
+                await new Promise(r => setTimeout(r, 400));
+                
+                const newArrows = await LevelGenerator.create(this.gridSize, this.level);
+                this.arrows = newArrows;
+                this.savedArrows = JSON.parse(JSON.stringify(newArrows));
+                
+                this.render();
+                
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+                
+                const hint = document.getElementById('hint-text');
+                if(this.level > 5) hint.innerText = "¡Nivel avanzado! Formas complejas";
+                else if(this.level === 1) hint.innerText = "Toca las flechas que tienen el camino libre";
+                else hint.innerText = "Despeja el tablero";
+            },
+
+            restartLevel() {
+                if(this.isAnimating) return;
+                AudioSys.whoosh();
+                this.arrows = JSON.parse(JSON.stringify(this.savedArrows));
+                this.render();
+            },
+
+            render() {
+                const board = document.getElementById('game-board');
+                const existingArrows = board.querySelectorAll('.arrow-container');
+                existingArrows.forEach(el => el.remove());
+
+                this.arrows.forEach(arrow => {
+                    const el = document.createElement('div');
+                    el.className = 'arrow-container';
+                    el.id = `arrow-${arrow.id}`;
                     
-                    let valid = false;
-                    let newArrows = [];
-                    let attempts = 0;
+                    el.style.gridRowStart = arrow.bbox.r + 1;
+                    el.style.gridRowEnd = `span ${arrow.bbox.h}`;
+                    el.style.gridColumnStart = arrow.bbox.c + 1;
+                    el.style.gridColumnEnd = `span ${arrow.bbox.w}`;
                     
-                    while (!valid && attempts < 3000) {
-                        newArrows = [];
-                        let occupied = new Set();
-                        let idCounter = 1;
-                        
-                        // Lista aleatoria de celdas para intentar iniciar flechas
-                        let indicesToCheck = Array.from({length: gridSize*gridSize}, (_, i) => i);
-                        indicesToCheck.sort(() => Math.random() - 0.5);
+                    // Simple Z-Index: smaller items usually on top to be clickable if overlapped (though logic prevents overlap)
+                    el.style.zIndex = 10; 
 
-                        for (let i of indicesToCheck) {
-                            if (occupied.has(i)) continue;
-                            if (Math.random() > density) continue;
+                    const svgContent = Renderer.drawArrow(arrow, this.gridSize);
+                    el.innerHTML = svgContent;
 
-                            const dir = Math.floor(Math.random() * 4) + 1;
-                            
-                            // Construcción del cuerpo: "Crecimiento inverso"
-                            // Empezamos en la cabeza (i) y añadimos cola hacia atrás
-                            let bodyIndices = [i]; 
-                            let currentHead = {r: Math.floor(i/gridSize), c: i%gridSize};
-                            
-                            // Dirección inicial hacia atrás (opuesta al movimiento)
-                            let backDir = dir === UP ? DOWN : (dir === DOWN ? UP : (dir === LEFT ? RIGHT : LEFT));
-                            
-                            const targetLen = Math.floor(Math.random() * maxLen) + 1;
-                            let currR = currentHead.r;
-                            let currC = currentHead.c;
-                            let currentBackDir = backDir;
+                    const svg = el.querySelector('svg');
+                    svg.onclick = (e) => {
+                        e.stopPropagation();
+                        this.handleArrowClick(arrow, el);
+                    };
 
-                            for (let l = 0; l < targetLen; l++) {
-                                // Giro aleatorio
-                                if (allowTurns && l > 0 && Math.random() > 0.6) {
-                                    if (currentBackDir === UP || currentBackDir === DOWN) {
-                                        currentBackDir = Math.random() > 0.5 ? LEFT : RIGHT;
-                                    } else {
-                                        currentBackDir = Math.random() > 0.5 ? UP : DOWN;
-                                    }
-                                }
+                    board.appendChild(el);
+                });
+            },
 
-                                let nextR = currR, nextC = currC;
-                                if (currentBackDir === UP) nextR--;
-                                else if (currentBackDir === DOWN) nextR++;
-                                else if (currentBackDir === LEFT) nextC--;
-                                else if (currentBackDir === RIGHT) nextC++;
+            handleArrowClick(arrow, element) {
+                if (this.isAnimating && !this.arrows.find(a=>a.id === arrow.id)) return;
 
-                                if (nextR >= 0 && nextR < gridSize && nextC >= 0 && nextC < gridSize) {
-                                    const nextIdx = nextR * gridSize + nextC;
-                                    if (!occupied.has(nextIdx) && !bodyIndices.includes(nextIdx)) {
-                                        bodyIndices.push(nextIdx);
-                                        currR = nextR;
-                                        currC = nextC;
-                                    } else break;
-                                } else break;
-                            }
+                const blockers = Logic.getBlockers(arrow, this.arrows, this.gridSize);
 
-                            if (bodyIndices.every(idx => !occupied.has(idx))) {
-                                bodyIndices.forEach(idx => occupied.add(idx));
-                                
-                                // Calc Bounding Box
-                                const rs = bodyIndices.map(idx => Math.floor(idx/gridSize));
-                                const cs = bodyIndices.map(idx => idx%gridSize);
-                                const minR = Math.min(...rs); const maxR = Math.max(...rs);
-                                const minC = Math.min(...cs); const maxC = Math.max(...cs);
+                if (blockers.length === 0) {
+                    AudioSys.pop();
+                    if(navigator.vibrate) navigator.vibrate(10);
+                    
+                    this.arrows = this.arrows.filter(a => a.id !== arrow.id);
+                    
+                    let endX = '0px', endY = '0px';
+                    const flyDist = '120vh'; 
+                    
+                    if (arrow.dir === UP) endY = `-${flyDist}`;
+                    else if (arrow.dir === DOWN) endY = flyDist;
+                    else if (arrow.dir === LEFT) endX = '-100vw';
+                    else if (arrow.dir === RIGHT) endX = '100vw';
+                    
+                    element.style.setProperty('--endX', endX);
+                    element.style.setProperty('--endY', endY);
+                    element.classList.add('flying-out');
 
-                                newArrows.push({
-                                    id: idCounter++,
-                                    dir: dir,
-                                    headIndex: i,
-                                    // IMPORTANTE: bodyIndices[0] es la cabeza. El resto es cola.
-                                    occupiedIndices: bodyIndices, 
-                                    bbox: { r: minR, c: minC, w: maxR-minR+1, h: maxC-minC+1 }
-                                });
-                            }
+                    const rect = element.getBoundingClientRect();
+                    let px = rect.left + rect.width/2;
+                    let py = rect.top + rect.height/2;
+                    if(arrow.dir === UP) py = rect.top;
+                    if(arrow.dir === DOWN) py = rect.bottom;
+                    if(arrow.dir === LEFT) px = rect.left;
+                    if(arrow.dir === RIGHT) px = rect.right;
+                    
+                    Effects.burst(px, py, arrow.dir);
+
+                    setTimeout(() => {
+                        element.remove();
+                        this.checkWin();
+                    }, 600);
+
+                } else {
+                    AudioSys.error();
+                    if(navigator.vibrate) navigator.vibrate(40);
+                    
+                    element.classList.remove('blocked-shake');
+                    void element.offsetWidth;
+                    element.classList.add('blocked-shake');
+
+                    blockers.forEach(blockerId => {
+                        const blockerEl = document.getElementById(`arrow-${blockerId}`);
+                        if(blockerEl) {
+                            blockerEl.classList.add('is-blocking');
+                            setTimeout(() => blockerEl.classList.remove('is-blocking'), 400);
                         }
+                    });
+                }
+            },
 
-                        if (newArrows.length >= 4 && isSolvable(newArrows)) valid = true;
-                        attempts++;
-                    }
-                    resolve(valid ? newArrows : createFallbackLevel());
-                }, 10);
-            });
-        }
+            checkWin() {
+                if (this.arrows.length === 0) {
+                    AudioSys.win();
+                    if(navigator.vibrate) navigator.vibrate([10, 30, 10]);
+                    
+                    const modal = document.getElementById('win-modal');
+                    modal.classList.add('active');
+                    
+                    setTimeout(() => document.getElementById('star-1').classList.add('pop'), 100);
+                    setTimeout(() => document.getElementById('star-2').classList.add('pop'), 300);
+                    setTimeout(() => document.getElementById('star-3').classList.add('pop'), 500);
+                }
+            },
 
-        function createFallbackLevel() {
-            gridSize = 5;
-            return [
-                {id:1, dir:UP, headIndex:12, occupiedIndices:[12,17], bbox:{r:2,c:2,w:1,h:2}},
-                {id:2, dir:LEFT, headIndex:11, occupiedIndices:[11], bbox:{r:2,c:1,w:1,h:1}},
-                {id:3, dir:RIGHT, headIndex:13, occupiedIndices:[13], bbox:{r:2,c:3,w:1,h:1}}
-            ];
-        }
-
-        // --- RENDERIZADO SVG PERFECTO ---
-        function generateArrowPath(arrow) {
-            const minR = arrow.bbox.r;
-            const minC = arrow.bbox.c;
-            
-            // Invertimos el array para dibujar desde la COLA hacia la CABEZA
-            // arrow.occupiedIndices = [Cabeza, Cuello, ..., Cola]
-            // puntos = [Cola, ..., Cuello, Cabeza]
-            const indices = [...arrow.occupiedIndices].reverse();
-            
-            const points = indices.map(idx => ({
-                x: ((idx % gridSize) - minC) * 100 + 50,
-                y: (Math.floor(idx / gridSize) - minR) * 100 + 50
-            }));
-
-            if (points.length === 0) return "";
-
-            // 1. Dibujar el cuerpo (Polyline)
-            let d = `M ${points[0].x} ${points[0].y}`;
-            for(let i=1; i<points.length; i++) {
-                d += ` L ${points[i].x} ${points[i].y}`;
+            nextLevel() {
+                document.getElementById('win-modal').classList.remove('active');
+                document.querySelectorAll('.star-icon').forEach(s => s.classList.remove('pop'));
+                this.level++;
+                localStorage.setItem('arrow-puzzle-level', this.level);
+                document.getElementById('level-display').innerText = this.level;
+                this.generateLevel();
             }
+        };
 
-            // 2. Dibujar la punta en el último punto (Cabeza)
-            const head = points[points.length-1];
-            
-            // Ángulo según dirección de movimiento
-            let angle = 0;
-            if (arrow.dir === UP) angle = -90;
-            else if (arrow.dir === DOWN) angle = 90;
-            else if (arrow.dir === LEFT) angle = 180;
-            else if (arrow.dir === RIGHT) angle = 0;
-            
-            const tipLen = 35; // Punta un poco más larga y estilizada
-            const rad = angle * Math.PI / 180;
-            const wingAngle = 0.6; // Ángulo de apertura de las alas
-            
-            const p1x = head.x - tipLen * Math.cos(rad - wingAngle);
-            const p1y = head.y - tipLen * Math.sin(rad - wingAngle);
-            const p2x = head.x - tipLen * Math.cos(rad + wingAngle);
-            const p2y = head.y - tipLen * Math.sin(rad + wingAngle);
-            
-            // Path combinado: Cuerpo + Punta
-            // Usamos M para movernos a la cabeza y dibujar las "alas" de la flecha
-            const arrowHead = ` M ${head.x} ${head.y} L ${p1x} ${p1y} M ${head.x} ${head.y} L ${p2x} ${p2y}`;
-            
-            return `<path d="${d}${arrowHead}" class="arrow-path" />`;
-        }
-
-        function renderBoard() {
-            const board = document.getElementById('game-board');
-            const overlay = document.getElementById('loading-overlay');
-            board.innerHTML = '';
-            board.appendChild(overlay);
-
-            board.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
-            board.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
-            document.getElementById('grid-size-display').innerText = `${gridSize}x${gridSize}`;
-
-            // Fondo
-            for(let i=0; i<gridSize*gridSize; i++) {
-                const bg = document.createElement('div');
-                bg.className = 'grid-bg-cell';
-                board.appendChild(bg);
-            }
-
-            // Flechas
-            arrows.forEach(arrow => {
-                const el = document.createElement('div');
-                el.className = 'arrow-item';
+        const Renderer = {
+            drawArrow(arrow, gridSize) {
+                const minR = arrow.bbox.r;
+                const minC = arrow.bbox.c;
+                const indices = [...arrow.occupiedIndices];
                 
-                el.style.gridRowStart = arrow.bbox.r + 1;
-                el.style.gridRowEnd = `span ${arrow.bbox.h}`;
-                el.style.gridColumnStart = arrow.bbox.c + 1;
-                el.style.gridColumnEnd = `span ${arrow.bbox.w}`;
+                // Fixed 100 units per cell logic
+                const points = indices.map(idx => ({
+                    x: ((idx % gridSize) - minC) * 100 + 50,
+                    y: (Math.floor(idx / gridSize) - minR) * 100 + 50
+                }));
+
+                let d = `M ${points[0].x} ${points[0].y}`;
+                for(let i=1; i<points.length; i++) {
+                    d += ` L ${points[i].x} ${points[i].y}`;
+                }
+
+                const head = points[points.length-1];
+                let rotation = 0;
+                if(arrow.dir === UP) rotation = -90;
+                else if(arrow.dir === DOWN) rotation = 90;
+                else if(arrow.dir === LEFT) rotation = 180;
                 
                 const vbW = arrow.bbox.w * 100;
                 const vbH = arrow.bbox.h * 100;
-                
-                el.innerHTML = `
-                    <svg class="arrow-svg" viewBox="0 0 ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet">
-                        ${generateArrowPath(arrow)}
-                    </svg>
+
+                return `
+                <svg class="arrow-svg" viewBox="0 0 ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                        <mask id="mask-${arrow.id}">
+                            <rect x="0" y="0" width="${vbW}" height="${vbH}" fill="white"/>
+                        </mask>
+                    </defs>
+                    <path d="${d}" class="arrow-body" stroke-linecap="round" stroke-linejoin="round" />
+                    <g transform="translate(${head.x}, ${head.y}) rotate(${rotation})">
+                        <path d="M -12 -14 L 16 0 L -12 14 Z" fill="var(--primary)" class="arrow-body" stroke="none" />
+                    </g>
+                    <path d="${d}" class="arrow-highlight" stroke="rgba(255,255,255,0.3)" stroke-width="8" fill="none" transform="translate(-2, -2)" />
+                </svg>
                 `;
-
-                // Interacción
-                const svgEl = el.querySelector('svg');
-                svgEl.onclick = (e) => {
-                    e.stopPropagation();
-                    handleArrowClick(arrow, el, svgEl);
-                };
-
-                board.appendChild(el);
-            });
-        }
-
-        function handleArrowClick(arrow, element, svgElement) {
-            if (!arrows.find(a => a.id === arrow.id)) return;
-
-            if (canEscape(arrow, arrows)) {
-                // Éxito
-                arrows = arrows.filter(a => a.id !== arrow.id);
-                
-                // Configurar animación de salida
-                let endX = '0px', endY = '0px';
-                if (arrow.dir === UP) endY = '-150vh';
-                else if (arrow.dir === DOWN) endY = '150vh';
-                else if (arrow.dir === LEFT) endX = '-150vw';
-                else if (arrow.dir === RIGHT) endX = '150vw';
-
-                element.style.setProperty('--tx', (arrow.dir === LEFT || arrow.dir === RIGHT) ? (arrow.dir === LEFT ? '-20px' : '20px') : '0px');
-                element.style.setProperty('--ty', (arrow.dir === UP || arrow.dir === DOWN) ? (arrow.dir === UP ? '-20px' : '20px') : '0px');
-                element.style.setProperty('--endX', endX);
-                element.style.setProperty('--endY', endY);
-
-                element.classList.add('flying');
-                if (navigator.vibrate) navigator.vibrate(10);
-
-                setTimeout(() => {
-                    element.remove();
-                    checkWin();
-                }, 500);
-
-            } else {
-                // Bloqueado (UIX Mejorada)
-                element.classList.remove('shake-anim');
-                svgElement.classList.add('blocked'); // Cambia color a rojo
-                
-                void element.offsetWidth; // Reflow
-                
-                element.classList.add('shake-anim');
-                if (navigator.vibrate) navigator.vibrate(50);
-                
-                // Quitar color rojo después de un momento
-                setTimeout(() => {
-                    svgElement.classList.remove('blocked');
-                }, 400);
             }
-        }
+        };
 
-        async function init() {
-            await generateNewLevel();
-        }
-
-        async function generateNewLevel() {
-            document.getElementById('loading-overlay').classList.remove('hidden');
-            const newArrows = await createValidLevel(currentLevel);
-            arrows = newArrows;
-            savedArrows = JSON.parse(JSON.stringify(newArrows));
-            renderBoard();
-            
-            // Delay para que se vea el loader y la transición sea suave
-            setTimeout(() => {
-                document.getElementById('loading-overlay').classList.add('hidden');
-            }, 300);
-            
-            document.getElementById('level-num').innerText = currentLevel;
-            
-            const hint = document.getElementById('hint-text');
-            if (currentLevel >= 6) hint.innerText = "¡Nuevas formas complejas!";
-            else if (currentLevel >= 4) hint.innerText = "El espacio se expande.";
-            else hint.innerText = "Toca para liberar. Si tiembla, está bloqueada.";
-        }
-
-        function resetLevel() {
-            if (savedArrows.length > 0) {
-                arrows = JSON.parse(JSON.stringify(savedArrows));
-                renderBoard();
-            }
-        }
-
-        function checkWin() {
-            if (arrows.length === 0) {
-                fireConfetti();
-                setTimeout(() => {
-                    currentLevel++;
-                    generateNewLevel();
-                }, 1200);
-            }
-        }
-
-        function fireConfetti() {
-            const canvas = document.getElementById('confetti-canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            const particles = Array.from({length: 120}, () => ({
-                x: window.innerWidth/2, y: window.innerHeight/2,
-                vx: (Math.random()-0.5)*30, vy: (Math.random()-0.5)*30,
-                color: ['#1e293b', '#3b82f6', '#10b981'][Math.floor(Math.random()*3)], 
-                life: 1, 
-                size: Math.random()*8+3
-            }));
-
-            function draw() {
-                ctx.clearRect(0,0,canvas.width,canvas.height);
-                let alive = false;
-                particles.forEach(p => {
-                    if(p.life>0){
-                        alive=true; p.x+=p.vx; p.y+=p.vy; p.vy+=0.8; p.life-=0.02;
-                        ctx.fillStyle=p.color; ctx.globalAlpha=p.life;
-                        ctx.fillRect(p.x,p.y,p.size,p.size);
+        const Logic = {
+            getBlockers(arrow, allArrows, gridSize) {
+                const occupiedSet = new Map();
+                allArrows.forEach(a => {
+                    if (a.id !== arrow.id) {
+                        a.occupiedIndices.forEach(idx => occupiedSet.set(idx, a.id));
                     }
                 });
-                if(alive) requestAnimationFrame(draw);
-            }
-            draw();
-        }
 
-        init();
+                const blockers = new Set();
+                
+                for (let cellIndex of arrow.occupiedIndices) {
+                    let r = Math.floor(cellIndex / gridSize);
+                    let c = cellIndex % gridSize;
+                    
+                    if (arrow.dir === UP) r--;
+                    else if (arrow.dir === DOWN) r++;
+                    else if (arrow.dir === LEFT) c--;
+                    else if (arrow.dir === RIGHT) c++;
+
+                    while (r >= 0 && r < gridSize && c >= 0 && c < gridSize) {
+                        const idx = r * gridSize + c;
+                        if (occupiedSet.has(idx)) {
+                            blockers.add(occupiedSet.get(idx));
+                        }
+                        
+                        if (arrow.dir === UP) r--;
+                        else if (arrow.dir === DOWN) r++;
+                        else if (arrow.dir === LEFT) c--;
+                        else if (arrow.dir === RIGHT) c++;
+                    }
+                }
+                return Array.from(blockers);
+            },
+
+            isSolvable(testArrows, gridSize) {
+                let simArrows = JSON.parse(JSON.stringify(testArrows));
+                let changed = true;
+                while (changed && simArrows.length > 0) {
+                    changed = false;
+                    const indexToRemove = simArrows.findIndex(a => this.getBlockers(a, simArrows, gridSize).length === 0);
+                    if (indexToRemove !== -1) {
+                        simArrows.splice(indexToRemove, 1);
+                        changed = true;
+                    }
+                }
+                return simArrows.length === 0;
+            }
+        };
+
+        const LevelGenerator = {
+            async create(gridSize, level) {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        const density = 0.65;
+                        const maxLen = level < 3 ? 2 : (level < 6 ? 4 : 5);
+                        const allowTurns = level >= 2;
+                        
+                        let valid = false;
+                        let resultArrows = [];
+                        let attempts = 0;
+
+                        while (!valid && attempts < 2000) {
+                            resultArrows = [];
+                            let occupied = new Set();
+                            let idCounter = 1;
+                            
+                            let indices = Array.from({length: gridSize*gridSize}, (_, i) => i);
+                            indices.sort(() => Math.random() - 0.5);
+
+                            for (let i of indices) {
+                                if (occupied.has(i)) continue;
+                                if (Math.random() > density) continue;
+
+                                const dir = Math.floor(Math.random() * 4) + 1;
+                                let body = [i];
+                                let head = {r: Math.floor(i/gridSize), c: i%gridSize};
+                                let backDir = dir === UP ? DOWN : (dir === DOWN ? UP : (dir === LEFT ? RIGHT : LEFT));
+                                
+                                const len = Math.floor(Math.random() * maxLen) + 1;
+                                let cr = head.r, cc = head.c;
+                                let curBackDir = backDir;
+
+                                for (let l=0; l<len; l++) {
+                                    if(allowTurns && l > 0 && Math.random() > 0.6) {
+                                        if(curBackDir === UP || curBackDir === DOWN) curBackDir = Math.random()>0.5 ? LEFT : RIGHT;
+                                        else curBackDir = Math.random()>0.5 ? UP : DOWN;
+                                    }
+                                    
+                                    let nr = cr, nc = cc;
+                                    if(curBackDir === UP) nr--;
+                                    else if(curBackDir === DOWN) nr++;
+                                    else if(curBackDir === LEFT) nc--;
+                                    else if(curBackDir === RIGHT) nc++;
+
+                                    if(nr>=0 && nr<gridSize && nc>=0 && nc<gridSize) {
+                                        const nidx = nr*gridSize+nc;
+                                        if(!occupied.has(nidx) && !body.includes(nidx)) {
+                                            body.push(nidx);
+                                            cr=nr; cc=nc;
+                                        } else break;
+                                    } else break;
+                                }
+
+                                if(body.every(x => !occupied.has(x))) {
+                                    body.forEach(x => occupied.add(x));
+                                    const rs = body.map(x=>Math.floor(x/gridSize));
+                                    const cs = body.map(x=>x%gridSize);
+                                    
+                                    resultArrows.push({
+                                        id: idCounter++,
+                                        dir: dir,
+                                        occupiedIndices: body.reverse(),
+                                        bbox: {
+                                            r: Math.min(...rs), c: Math.min(...cs),
+                                            w: Math.max(...cs)-Math.min(...cs)+1,
+                                            h: Math.max(...rs)-Math.min(...rs)+1
+                                        }
+                                    });
+                                }
+                            }
+                            
+                            if (resultArrows.length > 3 && Logic.isSolvable(resultArrows, gridSize)) {
+                                valid = true;
+                            }
+                            attempts++;
+                        }
+                        
+                        if (!valid) {
+                             resultArrows = [
+                                {id:1, dir:UP, occupiedIndices:[17,12], bbox:{r:2,c:2,w:1,h:2}},
+                                {id:2, dir:LEFT, occupiedIndices:[11], bbox:{r:2,c:1,w:1,h:1}},
+                                {id:3, dir:RIGHT, occupiedIndices:[13], bbox:{r:2,c:3,w:1,h:1}}
+                            ];
+                        }
+                        
+                        resolve(resultArrows);
+                    }, 0);
+                });
+            }
+        };
+
+        const Effects = {
+            canvas: document.getElementById('confetti-canvas'),
+            ctx: document.getElementById('confetti-canvas').getContext('2d'),
+            particles: [],
+            
+            init() {
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                this.loop();
+            },
+            
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            },
+
+            burst(x, y, dir) {
+                const count = 20;
+                const colors = ['#6366f1', '#a855f7', '#3b82f6', '#cbd5e1'];
+                let baseVx = 0, baseVy = 0;
+                if(dir === UP) baseVy = -5;
+                if(dir === DOWN) baseVy = 5;
+                if(dir === LEFT) baseVx = -5;
+                if(dir === RIGHT) baseVx = 5;
+
+                for(let i=0; i<count; i++) {
+                    this.particles.push({
+                        x: x, y: y,
+                        vx: (Math.random() - 0.5) * 10 + baseVx,
+                        vy: (Math.random() - 0.5) * 10 + baseVy,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        size: Math.random() * 6 + 4,
+                        life: 1.0,
+                        decay: Math.random() * 0.03 + 0.01
+                    });
+                }
+            },
+
+            loop() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                for(let i=this.particles.length-1; i>=0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx; p.y += p.vy; p.vy += 0.5; p.vx *= 0.95; p.life -= p.decay;
+                    this.ctx.globalAlpha = p.life;
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.beginPath();
+                    this.ctx.roundRect(p.x, p.y, p.size, p.size, 2);
+                    this.ctx.fill();
+                    if(p.life <= 0) this.particles.splice(i, 1);
+                }
+                requestAnimationFrame(() => this.loop());
+            }
+        };
+
+        Effects.init();
+        Game.init();
+
     </script>
 </body>
 </html>
