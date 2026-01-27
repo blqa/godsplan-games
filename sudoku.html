@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SUDOKU - God's Plan</title>
+    <title>SUDOKU - GOD'S PLAN</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,9 +18,12 @@
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- Confetti for Victory -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
     <!-- Estilos -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
 
         :root {
             --primary: #DC2626;
@@ -31,96 +34,103 @@
             font-family: 'Outfit', sans-serif;
             background-color: var(--bg-color);
             color: white;
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
             user-select: none;
-            touch-action: none;
+            touch-action: manipulation;
+            min-height: 100vh;
         }
         
         .font-mono { font-family: 'JetBrains Mono', monospace; }
 
         .glass-panel {
-            background: rgba(24, 24, 27, 0.6);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            background: rgba(20, 20, 22, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
         }
 
         /* Bordes personalizados para la rejilla de Sudoku */
         .sudoku-cell {
-            border-right: 1px solid rgba(255, 255, 255, 0.05);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            transition: background-color 0.1s ease;
         }
-        .sudoku-cell:nth-child(3n) { border-right: 2px solid rgba(220, 38, 38, 0.5); }
+        .sudoku-cell:nth-child(3n) { border-right: 2px solid rgba(220, 38, 38, 0.6); }
         .sudoku-cell:nth-child(9n) { border-right: none; }
-        .sudoku-row:nth-child(3n) .sudoku-cell { border-bottom: 2px solid rgba(220, 38, 38, 0.5); }
+        .sudoku-row:nth-child(3n) .sudoku-cell { border-bottom: 2px solid rgba(220, 38, 38, 0.6); }
         .sudoku-row:last-child .sudoku-cell { border-bottom: none; }
 
         /* Animaciones */
         .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes pop {
-            0% { transform: scale(0.9); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
+            0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
 
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-4px); }
-            75% { transform: translateX(4px); }
+            20% { transform: translateX(-4px) rotate(-1deg); }
+            40% { transform: translateX(4px) rotate(1deg); }
+            60% { transform: translateX(-2px); }
+            80% { transform: translateX(2px); }
         }
         .shake { animation: shake 0.3s ease-in-out; }
 
-        /* --- NUEVA ANIMACIÓN DE LLENADO (SCAN) --- */
-        @keyframes scan-line {
-            0% { 
-                background-color: rgba(255, 255, 255, 0.8); 
-                box-shadow: inset 0 0 20px rgba(255,255,255,0.5);
-            }
-            100% { 
-                background-color: transparent; 
-                box-shadow: none;
-            }
+        @keyframes scan-flash {
+            0% { background-color: rgba(16, 185, 129, 0.0); }
+            50% { background-color: rgba(16, 185, 129, 0.2); }
+            100% { background-color: rgba(16, 185, 129, 0.0); }
         }
-        
-        .completed-group-anim {
-            animation: scan-line 0.5s ease-out;
-        }
+        .completed-group-anim { animation: scan-flash 0.5s ease-out; }
 
         /* Grid pattern */
         .bg-grid-pattern {
             background-size: 40px 40px;
             background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
                               linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+            mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
         }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #050000; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
     </style>
 </head>
-<body class="pt-20 flex flex-col h-screen">
+<body class="flex flex-col min-h-screen">
 
     <!-- --- NAVBAR GLOBAL --- -->
-    <nav class="fixed top-0 left-0 right-0 z-50 px-6 py-3 backdrop-blur-md border-b border-white/5 bg-black/40">
+    <nav class="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-3 backdrop-blur-md border-b border-white/5 bg-black/40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             
             <!-- Logo -->
             <a href="#" class="flex items-center gap-3 cursor-pointer group no-underline">
-                <div class="relative w-8 h-8 flex items-center justify-center overflow-hidden rounded-full bg-zinc-900 border border-zinc-800 group-hover:border-red-500/50 transition-colors">
+                <div class="relative w-8 h-8 flex items-center justify-center overflow-hidden rounded-full bg-zinc-900 border border-zinc-800 group-hover:border-red-500/50 transition-colors shadow-[0_0_15px_rgba(220,38,38,0.2)]">
                     <i class="ph-duotone ph-planet text-red-500 text-xl relative z-10 group-hover:rotate-180 transition-transform duration-700 ease-in-out"></i>
                 </div>
                 <div class="flex flex-col">
                     <span class="font-bold tracking-tight text-white leading-none text-sm group-hover:text-red-500 transition-colors">GOD'S PLAN</span>
-                    <span class="text-[8px] text-zinc-500 font-mono tracking-widest uppercase">Nexus Hub v4.3</span>
+                    <span class="text-[8px] text-zinc-500 font-mono tracking-widest uppercase">Protocol v5.2</span>
                 </div>
             </a>
 
             <!-- Right Controls -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3 sm:gap-4">
                 <div class="hidden md:flex flex-col items-end text-right border-r border-white/10 pr-4">
                     <span id="sys-time" class="font-mono text-[10px] text-zinc-300 font-bold">00:00:00</span>
-                    <span id="sys-date" class="text-[9px] text-zinc-600 uppercase tracking-widest">LOADING...</span>
+                    <span id="sys-date" class="text-[9px] text-zinc-600 uppercase tracking-widest">SYNCED</span>
                 </div>
-                <div class="flex items-center gap-2 px-2 py-0.5 rounded-full bg-emerald-950/30 border border-emerald-500/20">
+                
+                <div class="flex items-center gap-2 px-2 py-0.5 rounded-full bg-emerald-950/30 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
                     <span class="relative flex h-1.5 w-1.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span></span>
                     <span class="hidden sm:block text-[9px] font-bold text-emerald-500 tracking-wider">ONLINE</span>
                 </div>
+
+                <!-- Botón Home Restaurado -->
                 <a href="#" class="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all border border-white/10 group">
                     <i class="ph-bold ph-house group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform text-base"></i>
                 </a>
@@ -129,16 +139,14 @@
     </nav>
 
     <!-- Fondo ambiental -->
-    <div class="absolute inset-0 z-0 pointer-events-none">
-        <div class="bg-grid-pattern absolute inset-0"></div>
-        <div class="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-red-900/10 rounded-full blur-[120px] animate-pulse"></div>
-    </div>
-
+    <div class="bg-grid-pattern z-0 pointer-events-none opacity-60"></div>
+    <div class="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] bg-red-900/10 rounded-full blur-[120px] animate-pulse pointer-events-none z-0"></div>
+    
     <!-- Contenedor React -->
-    <div id="root" class="relative z-10 flex-1 flex flex-col items-center justify-center pb-6"></div>
+    <div id="root" class="relative z-10 flex-1 flex flex-col items-center pt-24 pb-12 px-4 w-full min-h-screen"></div>
 
     <script>
-        // Reloj de la Navbar (Vanilla JS para rendimiento)
+        // Reloj del sistema
         function updateSystemClock() {
             const now = new Date();
             const timeElement = document.getElementById('sys-time');
@@ -148,6 +156,39 @@
         }
         setInterval(updateSystemClock, 1000);
         updateSystemClock();
+
+        // --- SISTEMA DE AUDIO (Web Audio API) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        const SoundFX = {
+            playTone: (freq, type, duration, vol = 0.1) => {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            },
+            click: () => SoundFX.playTone(800, 'sine', 0.1, 0.05),
+            softClick: () => SoundFX.playTone(400, 'sine', 0.05, 0.03),
+            write: () => SoundFX.playTone(600, 'triangle', 0.1, 0.05),
+            erase: () => SoundFX.playTone(200, 'sawtooth', 0.15, 0.05),
+            error: () => {
+                SoundFX.playTone(150, 'sawtooth', 0.3, 0.1);
+                setTimeout(() => SoundFX.playTone(100, 'sawtooth', 0.3, 0.1), 100);
+            },
+            win: () => {
+                const now = audioCtx.currentTime;
+                [261.6, 329.6, 392.0, 523.2].forEach((freq, i) => {
+                    setTimeout(() => SoundFX.playTone(freq, 'square', 0.4, 0.1), i * 100);
+                });
+            }
+        };
     </script>
 
     <script type="text/babel">
@@ -191,9 +232,10 @@
             solveSudoku(board);
             const solution = board.map(row => [...row]);
 
-            let attempts = 40; // Easy default
-            if (difficulty === 'medium') attempts = 50;
-            if (difficulty === 'hard') attempts = 58;
+            let attempts = 30; // Easy
+            if (difficulty === 'medium') attempts = 45;
+            if (difficulty === 'hard') attempts = 55;
+            if (difficulty === 'insane') attempts = 62;
 
             let count = attempts;
             while (count > 0) {
@@ -227,7 +269,6 @@
             return true;
         };
 
-        // --- Helper para detectar grupos completados ---
         const getCompletedGroups = (grid, solution) => {
             const rows = new Set();
             const cols = new Set();
@@ -235,21 +276,16 @@
 
             if(grid.length === 0 || solution.length === 0) return { rows, cols, boxes };
 
-            // Check Rows
             for(let r=0; r<9; r++) {
                 let isRowComplete = true;
                 for(let c=0; c<9; c++) if(grid[r][c] !== solution[r][c]) isRowComplete = false;
                 if(isRowComplete) rows.add(r);
             }
-
-            // Check Cols
             for(let c=0; c<9; c++) {
                 let isColComplete = true;
                 for(let r=0; r<9; r++) if(grid[r][c] !== solution[r][c]) isColComplete = false;
                 if(isColComplete) cols.add(c);
             }
-
-            // Check Boxes
             for(let b=0; b<9; b++) {
                 let isBoxComplete = true;
                 const startR = Math.floor(b / 3) * 3;
@@ -279,20 +315,16 @@
             const [history, setHistory] = useState([]);
             const [gameState, setGameState] = useState('menu'); 
             const [shake, setShake] = useState(false);
-            
-            // Nuevo estado para grupos completados
+            const [settings, setSettings] = useState({ sound: true, autoClean: true });
+            const [showSettings, setShowSettings] = useState(false);
             const [completed, setCompleted] = useState({ rows: new Set(), cols: new Set(), boxes: new Set() });
 
-            // Timer
             useEffect(() => {
                 let interval;
-                if (gameState === 'playing') {
-                    interval = setInterval(() => setTime(t => t + 1), 1000);
-                }
+                if (gameState === 'playing') interval = setInterval(() => setTime(t => t + 1), 1000);
                 return () => clearInterval(interval);
             }, [gameState]);
 
-            // Effect para calcular grupos completados cuando cambia el grid
             useEffect(() => {
                 if(gameState === 'playing' && grid.length > 0 && solution.length > 0) {
                     const newCompleted = getCompletedGroups(grid, solution);
@@ -316,21 +348,32 @@
                         if (e.key === 'ArrowRight' || e.key === 'd') newCol = (col + 1) % 9;
                         if (newRow !== row || newCol !== col) {
                             e.preventDefault();
+                            if(settings.sound) SoundFX.softClick();
                             setSelected({ row: newRow, col: newCol });
                         }
                     }
 
                     if (e.key >= '1' && e.key <= '9') handleNumberInput(parseInt(e.key));
                     if (e.key === 'Backspace' || e.key === 'Delete') handleErase();
-                    if (e.key === 'n' || e.key === 'N') setIsNoteMode(prev => !prev);
-                    if (e.key === 'h' || e.key === 'H') handleHint();
+                    if (e.key === 'n' || e.key === 'N') { setIsNoteMode(p => !p); if(settings.sound) SoundFX.softClick(); }
                     if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) handleUndo();
                 };
                 window.addEventListener('keydown', handleKeyDown);
                 return () => window.removeEventListener('keydown', handleKeyDown);
-            }, [selected, gameState, isNoteMode, grid, notes]);
+            }, [selected, gameState, isNoteMode, grid, notes, settings]);
+
+            const playSound = (type) => {
+                if(settings.sound) {
+                    if(type === 'click') SoundFX.click();
+                    if(type === 'error') SoundFX.error();
+                    if(type === 'write') SoundFX.write();
+                    if(type === 'erase') SoundFX.erase();
+                    if(type === 'win') SoundFX.win();
+                }
+            }
 
             const startNewGame = (diff) => {
+                playSound('click');
                 setDifficulty(diff);
                 const { initial, solution: sol } = generateSudoku(diff);
                 setInitialGrid(initial.map(row => [...row]));
@@ -347,22 +390,23 @@
 
             const resetGame = () => {
                 if(confirm("¿Reiniciar la partida actual?")) {
+                    playSound('click');
                     setGrid(initialGrid.map(row => [...row]));
                     setNotes(Array.from({length: 9}, () => Array.from({length: 9}, () => new Set())));
                     setMistakes(0);
                     setTime(0);
                     setHistory([]);
-                    setCompleted({ rows: new Set(), cols: new Set(), boxes: new Set() });
                 }
             }
 
             const togglePause = () => {
+                playSound('click');
                 if (gameState === 'playing') setGameState('paused');
                 else if (gameState === 'paused') setGameState('playing');
             }
 
             const saveState = () => {
-                setHistory(prev => [...prev.slice(-10), {
+                setHistory(prev => [...prev.slice(-15), {
                     grid: grid.map(r => [...r]),
                     notes: notes.map(r => r.map(c => new Set(c))),
                 }]);
@@ -370,6 +414,7 @@
 
             const handleUndo = () => {
                 if (history.length === 0 || gameState !== 'playing') return;
+                playSound('softClick');
                 const lastState = history[history.length - 1];
                 setGrid(lastState.grid);
                 setNotes(lastState.notes);
@@ -378,7 +423,7 @@
 
             const triggerShake = () => {
                 setShake(true);
-                setTimeout(() => setShake(false), 300);
+                setTimeout(() => setShake(false), 400);
             };
 
             const handleNumberInput = (num) => {
@@ -387,6 +432,7 @@
                 if (initialGrid[row][col] !== BLANK) return;
 
                 if (isNoteMode) {
+                    playSound('softClick');
                     const newNotes = notes.map(r => r.map(c => new Set(c)));
                     const cellNotes = newNotes[row][col];
                     if (cellNotes.has(num)) cellNotes.delete(num);
@@ -402,17 +448,28 @@
                     setGrid(newGrid);
 
                     if (num !== solution[row][col]) {
+                        playSound('error');
                         const newMistakes = mistakes + 1;
                         setMistakes(newMistakes);
                         triggerShake();
                         if (newMistakes >= 3) setGameState('gameover');
                     } else {
-                         const newNotes = notes.map(r => r.map(c => new Set(c)));
-                         for(let i=0; i<9; i++) { newNotes[row][i].delete(num); newNotes[i][col].delete(num); }
-                         const boxRow = 3 * Math.floor(row/3);
-                         const boxCol = 3 * Math.floor(col/3);
-                         for(let i=0; i<3; i++) for(let j=0; j<3; j++) newNotes[boxRow+i][boxCol+j].delete(num);
-                         setNotes(newNotes);
+                        playSound('write');
+                        let newNotes = notes;
+                        if(settings.autoClean) {
+                            newNotes = notes.map(r => r.map(c => new Set(c)));
+                            newNotes[row][col].clear();
+                            for(let i=0; i<9; i++) { 
+                                newNotes[row][i].delete(num); 
+                                newNotes[i][col].delete(num); 
+                            }
+                            const boxRow = 3 * Math.floor(row/3);
+                            const boxCol = 3 * Math.floor(col/3);
+                            for(let i=0; i<3; i++) for(let j=0; j<3; j++) {
+                                newNotes[boxRow+i][boxCol+j].delete(num);
+                            }
+                            setNotes(newNotes);
+                        }
                         checkWin(newGrid);
                     }
                 }
@@ -423,6 +480,7 @@
                 const { row, col } = selected;
                 if (initialGrid[row][col] !== BLANK) return;
                 saveState();
+                playSound('erase');
                 const newGrid = grid.map(r => [...r]);
                 newGrid[row][col] = BLANK;
                 setGrid(newGrid);
@@ -432,10 +490,11 @@
                 if (!selected || gameState !== 'playing') return;
                 const { row, col } = selected;
                 if (grid[row][col] !== BLANK) return;
-                
+                playSound('win');
                 saveState();
                 const newGrid = grid.map(r => [...r]);
-                newGrid[row][col] = solution[row][col];
+                const correctNum = solution[row][col];
+                newGrid[row][col] = correctNum;
                 setGrid(newGrid);
                 checkWin(newGrid);
             };
@@ -447,6 +506,13 @@
                     }
                 }
                 setGameState('won');
+                playSound('win');
+                confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#EF4444', '#FFFFFF', '#000000']
+                });
             };
 
             const formatTime = (seconds) => {
@@ -461,181 +527,250 @@
                 const isSel = selected?.row === row && selected?.col === col;
                 const isErr = val !== BLANK && val !== solution[row][col];
                 const selVal = selected ? grid[selected.row][selected.col] : null;
-                const isSameNum = val !== BLANK && selVal === val;
+                const isSameNum = val !== BLANK && selVal === val; 
                 const isRelated = selected && (selected.row === row || selected.col === col || 
                                 (Math.floor(selected.row/3) === Math.floor(row/3) && Math.floor(selected.col/3) === Math.floor(col/3)));
-
-                // Check Completion
                 const boxIndex = Math.floor(row / 3) * 3 + Math.floor(col / 3);
                 const isGroupComplete = completed.rows.has(row) || completed.cols.has(col) || completed.boxes.has(boxIndex);
 
-                let classes = "sudoku-cell w-full h-full flex items-center justify-center relative text-lg sm:text-2xl font-bold transition-colors cursor-pointer ";
+                let classes = "sudoku-cell w-full h-full flex items-center justify-center relative text-lg sm:text-2xl font-bold select-none ";
                 
-                // Animación de completado: Solo si es correcto
-                if (isGroupComplete && !isErr) {
-                    classes += "completed-group-anim ";
-                }
+                if (isGroupComplete && !isErr) classes += "completed-group-anim ";
 
-                if (isSel) classes += "bg-red-600/40 text-white shadow-[inset_0_0_10px_rgba(255,0,0,0.5)] z-10 ";
-                else if (isErr) classes += "bg-red-900/50 text-red-200 ";
-                else if (isSameNum) classes += "bg-red-500/20 text-white ";
-                else if (isRelated) classes += "bg-white/5 "; 
-                else classes += "bg-transparent ";
+                if (isSel) {
+                    classes += isNoteMode 
+                        ? "bg-zinc-700 ring-2 ring-emerald-500 z-20 cursor-pointer " 
+                        : "bg-red-600/60 text-white ring-2 ring-red-500 shadow-[0_0_15px_rgba(220,38,38,0.5)] z-20 cursor-pointer ";
+                }
+                else if (isErr) classes += "bg-red-900/50 text-red-200 animate-pulse cursor-pointer ";
+                else if (isSameNum) classes += "bg-red-500/30 text-white font-black shadow-[inset_0_0_10px_rgba(220,38,38,0.3)] cursor-pointer ";
+                else if (isRelated) classes += "bg-white/5 cursor-pointer "; 
+                else classes += "bg-transparent cursor-pointer ";
 
                 if (isInit) classes += "text-zinc-500 ";
-                else if (!isErr) classes += "text-red-400 ";
+                else if (!isErr && !isSel && !isSameNum) classes += "text-red-400 ";
 
                 return classes;
             };
 
+            const getNumberCount = (n) => {
+                let count = 0;
+                grid.forEach(row => row.forEach(cell => { if(cell === n) count++ }));
+                return count;
+            }
+
             return (
-                <div className={`w-full max-w-md flex flex-col items-center px-4 h-full ${shake ? 'shake' : ''}`}>
+                <div className={`w-full max-w-md flex flex-col items-center px-4 ${shake ? 'shake' : ''} transition-opacity duration-500 ${gameState === 'menu' ? 'opacity-100' : 'opacity-100'}`}>
                     
-                    {/* Header */}
-                    <div className="w-full flex justify-between items-end mb-3 mt-2">
-                        <div>
-                            <h1 className="text-4xl font-black tracking-tighter italic text-white drop-shadow-[0_0_15px_rgba(220,38,38,0.6)] leading-none">
+                    {/* Header Game Info */}
+                    <div className="w-full flex justify-between items-end mb-3">
+                        <div className="flex flex-col">
+                            <h1 className="text-3xl sm:text-4xl font-black tracking-tighter italic text-white drop-shadow-[0_0_15px_rgba(220,38,38,0.6)] leading-none">
                                 SUDOKU <span className="text-red-600">PRO</span>
                             </h1>
-                            <p className="text-zinc-500 text-[10px] font-mono tracking-widest mt-0.5 uppercase">Logic Matrix</p>
+                            <div className="flex items-center gap-2">
+                                <span className="text-zinc-500 text-[10px] font-mono tracking-widest mt-0.5 uppercase">Difficulty: {difficulty}</span>
+                            </div>
                         </div>
                         <div className="flex gap-2 text-[10px] font-mono">
-                            <div className="glass-panel rounded px-2 py-1 flex flex-col items-center">
-                                <span className="text-zinc-500">Mistakes</span>
-                                <div className="flex gap-1 mt-1">
+                            <div className="glass-panel rounded px-3 py-1.5 flex flex-col items-center border-l-2 border-red-500">
+                                <span className="text-zinc-500 uppercase text-[8px] tracking-wider mb-0.5">Mistakes</span>
+                                <div className="flex gap-1">
                                     {[0,1,2].map(i => (
-                                        <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < mistakes ? 'bg-red-500 shadow-[0_0_4px_red]' : 'bg-zinc-700'}`}></div>
+                                        <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${i < mistakes ? 'bg-red-500 shadow-[0_0_5px_red]' : 'bg-zinc-800'}`}></div>
                                     ))}
                                 </div>
                             </div>
-                            <div className="glass-panel rounded px-2 py-1 flex flex-col items-center min-w-[50px]">
-                                <span className="text-zinc-500">Time</span>
-                                <span className="text-white">{formatTime(time)}</span>
+                            <div className="glass-panel rounded px-3 py-1.5 flex flex-col items-center min-w-[60px] border-l-2 border-zinc-500">
+                                <span className="text-zinc-500 uppercase text-[8px] tracking-wider mb-0.5">Time</span>
+                                <span className="text-white font-bold">{formatTime(time)}</span>
                             </div>
-                            <button onClick={togglePause} className="glass-panel rounded px-2 flex items-center justify-center hover:bg-white/10 active:scale-95 transition-all">
-                                <i className={`ph-fill ${gameState === 'paused' ? 'ph-play' : 'ph-pause'} text-red-400`}></i>
+                            <button onClick={() => setShowSettings(!showSettings)} className="glass-panel rounded w-8 flex items-center justify-center hover:bg-white/10 active:scale-95 transition-all">
+                                <i className="ph-bold ph-gear text-zinc-400"></i>
                             </button>
                         </div>
                     </div>
 
-                    {/* OVERLAYS */}
-                    {gameState === 'menu' && (
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 glass-panel rounded-xl p-8 flex flex-col items-center justify-center animate-pop border border-white/10 shadow-2xl w-[90%] max-w-[350px]">
-                            <i className="ph-duotone ph-grid-nine text-red-500 text-6xl mb-6"></i>
-                            <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-widest">Select Difficulty</h2>
-                            <div className="flex flex-col gap-3 w-full">
-                                <button onClick={() => startNewGame('easy')} className="bg-zinc-800 hover:bg-emerald-900/50 hover:text-emerald-400 border border-white/10 py-3 rounded text-xs font-bold uppercase tracking-widest transition-all">Easy</button>
-                                <button onClick={() => startNewGame('medium')} className="bg-zinc-800 hover:bg-yellow-900/50 hover:text-yellow-400 border border-white/10 py-3 rounded text-xs font-bold uppercase tracking-widest transition-all">Medium</button>
-                                <button onClick={() => startNewGame('hard')} className="bg-zinc-800 hover:bg-red-900/50 hover:text-red-400 border border-white/10 py-3 rounded text-xs font-bold uppercase tracking-widest transition-all">Hard</button>
+                    {/* SETTINGS OVERLAY */}
+                    {showSettings && (
+                        <div className="fixed z-50 inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center" onClick={() => setShowSettings(false)}>
+                            <div className="glass-panel p-6 rounded-xl w-[80%] max-w-[300px]" onClick={e => e.stopPropagation()}>
+                                <h3 className="text-white font-bold mb-4 uppercase tracking-wider flex items-center gap-2">
+                                    <i className="ph-fill ph-faders text-red-500"></i> Settings
+                                </h3>
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-zinc-400 text-sm">Sound FX</span>
+                                        <button onClick={() => setSettings(s => ({...s, sound: !s.sound}))} className={`w-10 h-5 rounded-full relative transition-colors ${settings.sound ? 'bg-emerald-600' : 'bg-zinc-700'}`}>
+                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${settings.sound ? 'left-6' : 'left-1'}`}></div>
+                                        </button>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-zinc-400 text-sm">Auto-Clean Notes</span>
+                                        <button onClick={() => setSettings(s => ({...s, autoClean: !s.autoClean}))} className={`w-10 h-5 rounded-full relative transition-colors ${settings.autoClean ? 'bg-emerald-600' : 'bg-zinc-700'}`}>
+                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${settings.autoClean ? 'left-6' : 'left-1'}`}></div>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowSettings(false)} className="w-full mt-6 bg-zinc-800 hover:bg-zinc-700 py-2 rounded text-xs uppercase font-bold text-white transition-colors">Close</button>
                             </div>
-                            {grid.length > 0 && <button onClick={() => setGameState('playing')} className="mt-4 text-zinc-500 hover:text-white text-xs underline">Resume Game</button>}
+                        </div>
+                    )}
+
+                    {/* MODALS */}
+                    {gameState === 'menu' && (
+                        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 glass-panel rounded-2xl p-8 flex flex-col items-center justify-center animate-pop border border-white/10 shadow-2xl w-[90%] max-w-[350px] bg-black/90">
+                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-900 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(220,38,38,0.4)]">
+                                <i className="ph-fill ph-grid-nine text-white text-3xl"></i>
+                            </div>
+                            <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-widest">New Game</h2>
+                            <p className="text-zinc-500 text-xs mb-6 font-mono text-center">Select difficulty protocol</p>
+                            <div className="flex flex-col gap-2 w-full">
+                                <button onClick={() => startNewGame('easy')} className="bg-zinc-800 hover:bg-emerald-900/40 hover:border-emerald-500/50 border border-white/5 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex justify-between px-4 group">
+                                    <span>Easy</span> <i className="ph-bold ph-caret-right opacity-0 group-hover:opacity-100 text-emerald-500"></i>
+                                </button>
+                                <button onClick={() => startNewGame('medium')} className="bg-zinc-800 hover:bg-yellow-900/40 hover:border-yellow-500/50 border border-white/5 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex justify-between px-4 group">
+                                    <span>Medium</span> <i className="ph-bold ph-caret-right opacity-0 group-hover:opacity-100 text-yellow-500"></i>
+                                </button>
+                                <button onClick={() => startNewGame('hard')} className="bg-zinc-800 hover:bg-red-900/40 hover:border-red-500/50 border border-white/5 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex justify-between px-4 group">
+                                    <span>Hard</span> <i className="ph-bold ph-caret-right opacity-0 group-hover:opacity-100 text-red-500"></i>
+                                </button>
+                                <button onClick={() => startNewGame('insane')} className="bg-zinc-800 hover:bg-purple-900/40 hover:border-purple-500/50 border border-white/5 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex justify-between px-4 group">
+                                    <span>Insane</span> <i className="ph-bold ph-skull opacity-0 group-hover:opacity-100 text-purple-500"></i>
+                                </button>
+                            </div>
+                            {grid.length > 0 && <button onClick={() => setGameState('playing')} className="mt-6 text-zinc-500 hover:text-white text-xs underline">Resume Current Session</button>}
                         </div>
                     )}
 
                     {gameState === 'paused' && (
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-black/80 backdrop-blur-xl rounded-xl p-8 flex flex-col items-center justify-center animate-pop border border-white/10 w-[90%] max-w-[350px]">
-                            <h2 className="text-3xl font-black text-white mb-6 tracking-widest">PAUSED</h2>
-                            <button onClick={togglePause} className="bg-red-600 hover:bg-red-500 text-white w-full py-3 rounded font-bold uppercase tracking-wider shadow-[0_0_20px_rgba(220,38,38,0.4)]">Resume</button>
+                        <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md flex items-center justify-center animate-pop">
+                            <div className="glass-panel p-8 rounded-2xl flex flex-col items-center">
+                                <h2 className="text-4xl font-black text-white mb-8 tracking-widest italic">PAUSED</h2>
+                                <button onClick={togglePause} className="w-64 bg-red-600 hover:bg-red-500 text-white py-4 rounded-xl font-bold uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all hover:scale-105">
+                                    Resume
+                                </button>
+                            </div>
                         </div>
                     )}
 
                     {gameState === 'won' && (
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-black/90 backdrop-blur-md rounded-xl p-8 flex flex-col items-center justify-center animate-pop border border-emerald-500/30 w-[90%] max-w-[350px]">
-                            <i className="ph-fill ph-crown text-yellow-500 text-6xl mb-4 drop-shadow-[0_0_25px_rgba(234,179,8,0.6)] animate-bounce"></i>
-                            <h2 className="text-4xl font-black text-white mb-2 italic tracking-tighter">VICTORY</h2>
-                            <p className="text-zinc-400 mb-6 font-mono text-sm">Protocol Completed in {formatTime(time)}</p>
-                            <button onClick={() => setGameState('menu')} className="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded text-xs font-bold uppercase tracking-widest transition-all text-white">Continue</button>
+                        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center animate-pop">
+                            <div className="p-8 flex flex-col items-center text-center">
+                                <i className="ph-fill ph-trophy text-yellow-500 text-7xl mb-6 drop-shadow-[0_0_35px_rgba(234,179,8,0.6)] animate-bounce"></i>
+                                <h2 className="text-5xl font-black text-white mb-2 italic tracking-tighter">VICTORY</h2>
+                                <div className="h-1 w-20 bg-gradient-to-r from-transparent via-yellow-500 to-transparent mb-6"></div>
+                                <p className="text-zinc-300 mb-8 font-mono text-sm">Protocol Completed<br/>Time: <span className="text-white font-bold">{formatTime(time)}</span></p>
+                                <button onClick={() => setGameState('menu')} className="px-10 py-3 bg-zinc-800 hover:bg-white hover:text-black border border-white/20 rounded-full text-xs font-bold uppercase tracking-widest transition-all">
+                                    New Operation
+                                </button>
+                            </div>
                         </div>
                     )}
 
                     {gameState === 'gameover' && (
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-black/90 backdrop-blur-md rounded-xl p-8 flex flex-col items-center justify-center animate-pop border border-red-500/30 w-[90%] max-w-[350px]">
-                            <i className="ph-fill ph-skull text-red-500 text-6xl mb-4 animate-pulse"></i>
-                            <h2 className="text-4xl font-black text-white mb-2 italic tracking-tighter">GAME OVER</h2>
-                            <p className="text-zinc-400 mb-6 font-mono text-sm">Too many mistakes detected.</p>
-                            <button onClick={() => setGameState('menu')} className="w-full bg-red-600 hover:bg-red-500 py-3 rounded text-xs font-bold uppercase tracking-widest transition-all text-white">Try Again</button>
+                        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-pop">
+                             <div className="p-8 flex flex-col items-center text-center border border-red-900/50 rounded-2xl bg-red-950/10">
+                                <i className="ph-duotone ph-warning text-red-500 text-7xl mb-4 animate-pulse"></i>
+                                <h2 className="text-4xl font-black text-white mb-2 italic tracking-tighter">FAILURE</h2>
+                                <p className="text-red-300/70 mb-8 font-mono text-xs max-w-[200px]">Error threshold exceeded. System lockout initiated.</p>
+                                <button onClick={() => setGameState('menu')} className="w-full bg-red-600 hover:bg-red-500 py-3 rounded text-xs font-bold uppercase tracking-widest transition-all text-white shadow-[0_0_20px_rgba(220,38,38,0.3)]">
+                                    Reboot System
+                                </button>
+                            </div>
                         </div>
                     )}
 
-                    {/* Board */}
-                    <div className="bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-lg overflow-hidden shadow-2xl relative w-full aspect-square max-w-[380px]">
-                        <div className="flex flex-col h-full w-full">
-                            {grid.length > 0 ? grid.map((rowArr, rIndex) => (
-                                <div key={rIndex} className="flex sudoku-row flex-1">
-                                    {rowArr.map((cellVal, cIndex) => (
-                                        <div 
-                                            key={`${rIndex}-${cIndex}`} 
-                                            onClick={() => setSelected({row: rIndex, col: cIndex})}
-                                            className={`flex-1 ${getCellClass(rIndex, cIndex)}`}
-                                        >
-                                            {cellVal !== BLANK ? cellVal : (
-                                                <div className="grid grid-cols-3 w-full h-full p-[1px] pointer-events-none">
-                                                    {[1,2,3,4,5,6,7,8,9].map(n => (
-                                                        <div key={n} className="flex items-center justify-center text-[7px] sm:text-[8px] leading-none text-zinc-500">
-                                                            {notes[rIndex][cIndex].has(n) ? n : ''}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )) : <div className="h-full w-full flex items-center justify-center text-zinc-600 font-mono text-xs">Waiting for initialization...</div>}
+                    {/* Board Container - ADDED w-full here to fix miniature issue */}
+                    <div className={`w-full max-w-[380px] relative transition-all duration-300 ${isNoteMode ? 'p-[2px] rounded-lg bg-gradient-to-br from-emerald-500/50 to-transparent' : 'p-[2px] rounded-lg bg-gradient-to-br from-white/10 to-transparent'}`}>
+                        <div className="bg-black rounded-md overflow-hidden shadow-2xl relative w-full aspect-square border border-white/10">
+                            <div className="flex flex-col h-full w-full">
+                                {grid.length > 0 ? grid.map((rowArr, rIndex) => (
+                                    <div key={rIndex} className="flex sudoku-row flex-1">
+                                        {rowArr.map((cellVal, cIndex) => (
+                                            <div 
+                                                key={`${rIndex}-${cIndex}`} 
+                                                onClick={() => {
+                                                    playSound('softClick');
+                                                    setSelected({row: rIndex, col: cIndex});
+                                                }}
+                                                className={`flex-1 ${getCellClass(rIndex, cIndex)}`}
+                                            >
+                                                {cellVal !== BLANK ? cellVal : (
+                                                    <div className="grid grid-cols-3 w-full h-full p-[1px] pointer-events-none">
+                                                        {[1,2,3,4,5,6,7,8,9].map(n => (
+                                                            <div key={n} className="flex items-center justify-center text-[7px] sm:text-[8px] leading-none text-zinc-500">
+                                                                {notes[rIndex][cIndex].has(n) ? n : ''}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )) : <div className="h-full w-full flex items-center justify-center text-zinc-600 font-mono text-xs animate-pulse">Initializing Matrix...</div>}
+                            </div>
                         </div>
                     </div>
 
                     {/* Controls */}
                     <div className="w-full mt-4 flex flex-col gap-3 max-w-[380px]">
                         {/* Toolbar */}
-                        <div className="flex justify-between gap-2 px-2">
-                            <button onClick={handleUndo} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors">
-                                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10">
-                                    <i className="ph-bold ph-arrow-u-up-left text-lg"></i>
-                                </div>
-                                <span className="text-[10px] uppercase font-bold tracking-wider">Undo</span>
+                        <div className="flex justify-between gap-2 px-1">
+                            <button onClick={handleUndo} className="flex-1 h-12 rounded bg-zinc-900 border border-white/5 flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all active:scale-95 group">
+                                <i className="ph-bold ph-arrow-u-up-left text-lg group-hover:-translate-y-0.5 transition-transform"></i>
+                                <span className="text-[9px] uppercase font-bold tracking-wider">Undo</span>
                             </button>
-                            <button onClick={handleErase} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors">
-                                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10">
-                                    <i className="ph-bold ph-eraser text-lg"></i>
-                                </div>
-                                <span className="text-[10px] uppercase font-bold tracking-wider">Erase</span>
+                            
+                            <button onClick={handleErase} className="flex-1 h-12 rounded bg-zinc-900 border border-white/5 flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all active:scale-95 group">
+                                <i className="ph-bold ph-eraser text-lg group-hover:-translate-y-0.5 transition-transform"></i>
+                                <span className="text-[9px] uppercase font-bold tracking-wider">Erase</span>
                             </button>
-                            <button onClick={() => setIsNoteMode(!isNoteMode)} className={`flex flex-col items-center gap-1 transition-colors ${isNoteMode ? 'text-red-400' : 'text-zinc-400 hover:text-white'}`}>
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all ${isNoteMode ? 'bg-red-500/20 border-red-500 text-red-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
-                                    <i className="ph-bold ph-pencil-simple text-lg"></i>
+                            
+                            <button onClick={() => { setIsNoteMode(!isNoteMode); playSound('click'); }} className={`flex-1 h-12 rounded border flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${isNoteMode ? 'bg-emerald-900/30 border-emerald-500 text-emerald-400' : 'bg-zinc-900 border-white/5 text-zinc-400 hover:text-white hover:bg-zinc-800'}`}>
+                                <div className="relative">
+                                    <i className={`ph-bold ph-pencil-simple text-lg ${isNoteMode ? 'animate-bounce' : ''}`}></i>
+                                    <span className="absolute -top-1 -right-2 text-[8px] bg-zinc-950 px-1 rounded border border-white/10">{isNoteMode ? 'ON' : 'OFF'}</span>
                                 </div>
-                                <span className="text-[10px] uppercase font-bold tracking-wider">Notes</span>
+                                <span className="text-[9px] uppercase font-bold tracking-wider">Notes</span>
                             </button>
-                             <button onClick={handleHint} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors">
-                                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 hover:bg-white/10">
-                                    <i className="ph-bold ph-lightbulb text-lg"></i>
-                                </div>
-                                <span className="text-[10px] uppercase font-bold tracking-wider">Hint</span>
+                            
+                             <button onClick={handleHint} className="flex-1 h-12 rounded bg-zinc-900 border border-white/5 flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-yellow-200 hover:bg-yellow-900/20 hover:border-yellow-500/30 transition-all active:scale-95 group">
+                                <i className="ph-bold ph-lightbulb text-lg group-hover:-translate-y-0.5 transition-transform"></i>
+                                <span className="text-[9px] uppercase font-bold tracking-wider">Hint</span>
                             </button>
                         </div>
 
                         {/* Numpad */}
-                        <div className="grid grid-cols-9 gap-1 sm:gap-2">
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-                                <button 
-                                    key={num} 
-                                    onClick={() => handleNumberInput(num)}
-                                    className="h-10 sm:h-12 rounded bg-zinc-800/50 hover:bg-red-900/40 border border-white/5 hover:border-red-500/50 text-red-100 font-bold text-lg transition-all active:scale-95 flex items-center justify-center"
-                                >
-                                    {num}
-                                </button>
-                            ))}
+                        <div className="grid grid-cols-9 gap-1 sm:gap-2 mt-1">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => {
+                                const count = getNumberCount(num);
+                                const isDone = count >= 9;
+                                return (
+                                    <button 
+                                        key={num} 
+                                        onClick={() => handleNumberInput(num)}
+                                        disabled={isDone}
+                                        className={`h-11 sm:h-14 rounded border flex flex-col items-center justify-center transition-all active:scale-90 relative overflow-hidden
+                                            ${isDone 
+                                                ? 'bg-zinc-900/30 border-transparent text-zinc-700 opacity-50 cursor-not-allowed' 
+                                                : 'bg-zinc-800 hover:bg-red-600 hover:border-red-400 border-white/5 text-zinc-200 hover:text-white hover:shadow-[0_0_15px_rgba(220,38,38,0.5)]'}
+                                        `}
+                                    >
+                                        <span className="text-xl font-bold z-10">{num}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
-                    {/* Footer Reset */}
-                    <div className="w-full max-w-[380px] mt-4 flex justify-between px-2">
-                        <button onClick={() => setGameState('menu')} className="text-[10px] text-zinc-600 hover:text-white transition-colors uppercase tracking-widest">
-                            Main Menu
+                    {/* Footer Actions */}
+                    <div className="w-full max-w-[380px] mt-6 flex justify-between items-center px-2 pb-6 border-t border-white/5 pt-4">
+                        <button onClick={() => setGameState('menu')} className="flex items-center gap-2 text-[10px] text-zinc-500 hover:text-white transition-colors uppercase tracking-widest group">
+                            <i className="ph-bold ph-arrow-left group-hover:-translate-x-1 transition-transform"></i> Main Menu
                         </button>
-                        <button onClick={resetGame} className="group flex items-center gap-2 transition-all">
-                            <span className="text-[10px] font-bold text-zinc-500 group-hover:text-red-400 uppercase tracking-wider">Restart Level</span>
-                             <i className="ph-bold ph-arrow-counter-clockwise text-zinc-500 group-hover:text-red-500 text-xs"></i>
+                        <button onClick={resetGame} className="flex items-center gap-2 text-[10px] text-zinc-500 hover:text-red-400 transition-colors uppercase tracking-widest group">
+                            Reset Level <i className="ph-bold ph-arrow-counter-clockwise group-hover:rotate-180 transition-transform duration-500"></i>
                         </button>
                     </div>
 
