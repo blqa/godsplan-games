@@ -55,6 +55,7 @@
         .sudoku-row:nth-child(3n) .sudoku-cell { border-bottom: 2px solid rgba(220, 38, 38, 0.5); }
         .sudoku-row:last-child .sudoku-cell { border-bottom: none; }
 
+        /* Animaciones */
         .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes pop {
             0% { transform: scale(0.9); opacity: 0; }
@@ -67,6 +68,22 @@
             75% { transform: translateX(4px); }
         }
         .shake { animation: shake 0.3s ease-in-out; }
+
+        /* --- NUEVA ANIMACIÓN DE LLENADO (SCAN) --- */
+        @keyframes scan-line {
+            0% { 
+                background-color: rgba(255, 255, 255, 0.8); 
+                box-shadow: inset 0 0 20px rgba(255,255,255,0.5);
+            }
+            100% { 
+                background-color: transparent; 
+                box-shadow: none;
+            }
+        }
+        
+        .completed-group-anim {
+            animation: scan-line 0.5s ease-out;
+        }
 
         /* Grid pattern */
         .bg-grid-pattern {
@@ -90,7 +107,7 @@
                 </div>
                 <div class="flex flex-col">
                     <span class="font-bold tracking-tight text-white leading-none text-sm group-hover:text-red-500 transition-colors">GOD'S PLAN</span>
-                    <span class="text-[8px] text-zinc-500 font-mono tracking-widest uppercase">Nexus Hub v4.2</span>
+                    <span class="text-[8px] text-zinc-500 font-mono tracking-widest uppercase">Nexus Hub v4.3</span>
                 </div>
             </a>
 
@@ -136,7 +153,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useCallback } = React;
 
-        // --- Lógica de Sudoku Mejorada ---
+        // --- Lógica de Sudoku ---
         const BLANK = 0;
         
         const isValid = (board, row, col, num) => {
@@ -210,6 +227,43 @@
             return true;
         };
 
+        // --- Helper para detectar grupos completados ---
+        const getCompletedGroups = (grid, solution) => {
+            const rows = new Set();
+            const cols = new Set();
+            const boxes = new Set();
+
+            if(grid.length === 0 || solution.length === 0) return { rows, cols, boxes };
+
+            // Check Rows
+            for(let r=0; r<9; r++) {
+                let isRowComplete = true;
+                for(let c=0; c<9; c++) if(grid[r][c] !== solution[r][c]) isRowComplete = false;
+                if(isRowComplete) rows.add(r);
+            }
+
+            // Check Cols
+            for(let c=0; c<9; c++) {
+                let isColComplete = true;
+                for(let r=0; r<9; r++) if(grid[r][c] !== solution[r][c]) isColComplete = false;
+                if(isColComplete) cols.add(c);
+            }
+
+            // Check Boxes
+            for(let b=0; b<9; b++) {
+                let isBoxComplete = true;
+                const startR = Math.floor(b / 3) * 3;
+                const startC = (b % 3) * 3;
+                for(let i=0; i<3; i++) {
+                    for(let j=0; j<3; j++) {
+                        if(grid[startR+i][startC+j] !== solution[startR+i][startC+j]) isBoxComplete = false;
+                    }
+                }
+                if(isBoxComplete) boxes.add(b);
+            }
+            return { rows, cols, boxes };
+        };
+
         // --- Componente Principal ---
 
         function SudokuApp() {
@@ -223,8 +277,11 @@
             const [time, setTime] = useState(0);
             const [isNoteMode, setIsNoteMode] = useState(false);
             const [history, setHistory] = useState([]);
-            const [gameState, setGameState] = useState('menu'); // menu, playing, paused, won, gameover
+            const [gameState, setGameState] = useState('menu'); 
             const [shake, setShake] = useState(false);
+            
+            // Nuevo estado para grupos completados
+            const [completed, setCompleted] = useState({ rows: new Set(), cols: new Set(), boxes: new Set() });
 
             // Timer
             useEffect(() => {
@@ -235,11 +292,18 @@
                 return () => clearInterval(interval);
             }, [gameState]);
 
+            // Effect para calcular grupos completados cuando cambia el grid
+            useEffect(() => {
+                if(gameState === 'playing' && grid.length > 0 && solution.length > 0) {
+                    const newCompleted = getCompletedGroups(grid, solution);
+                    setCompleted(newCompleted);
+                }
+            }, [grid, solution, gameState]);
+
             useEffect(() => {
                 const handleKeyDown = (e) => {
                     if (gameState !== 'playing') return;
 
-                    // Pause shortcut
                     if (e.key === 'p' || e.key === 'P') togglePause();
                     
                     if (selected) {
@@ -276,6 +340,7 @@
                 setMistakes(0);
                 setTime(0);
                 setHistory([]);
+                setCompleted({ rows: new Set(), cols: new Set(), boxes: new Set() });
                 setGameState('playing');
                 setSelected({row: 4, col: 4});
             };
@@ -287,6 +352,7 @@
                     setMistakes(0);
                     setTime(0);
                     setHistory([]);
+                    setCompleted({ rows: new Set(), cols: new Set(), boxes: new Set() });
                 }
             }
 
@@ -296,7 +362,6 @@
             }
 
             const saveState = () => {
-                // IMPORTANT: We do NOT save 'mistakes' here anymore
                 setHistory(prev => [...prev.slice(-10), {
                     grid: grid.map(r => [...r]),
                     notes: notes.map(r => r.map(c => new Set(c))),
@@ -308,7 +373,6 @@
                 const lastState = history[history.length - 1];
                 setGrid(lastState.grid);
                 setNotes(lastState.notes);
-                // IMPORTANT: We do NOT revert mistakes
                 setHistory(prev => prev.slice(0, -1));
             };
 
@@ -338,13 +402,11 @@
                     setGrid(newGrid);
 
                     if (num !== solution[row][col]) {
-                        // Mistake logic stays persistent
                         const newMistakes = mistakes + 1;
                         setMistakes(newMistakes);
                         triggerShake();
                         if (newMistakes >= 3) setGameState('gameover');
                     } else {
-                        // Correct move
                          const newNotes = notes.map(r => r.map(c => new Set(c)));
                          for(let i=0; i<9; i++) { newNotes[row][i].delete(num); newNotes[i][col].delete(num); }
                          const boxRow = 3 * Math.floor(row/3);
@@ -403,12 +465,21 @@
                 const isRelated = selected && (selected.row === row || selected.col === col || 
                                 (Math.floor(selected.row/3) === Math.floor(row/3) && Math.floor(selected.col/3) === Math.floor(col/3)));
 
+                // Check Completion
+                const boxIndex = Math.floor(row / 3) * 3 + Math.floor(col / 3);
+                const isGroupComplete = completed.rows.has(row) || completed.cols.has(col) || completed.boxes.has(boxIndex);
+
                 let classes = "sudoku-cell w-full h-full flex items-center justify-center relative text-lg sm:text-2xl font-bold transition-colors cursor-pointer ";
                 
-                if (isSel) classes += "bg-red-600/40 text-white shadow-[inset_0_0_10px_rgba(255,0,0,0.5)] ";
+                // Animación de completado: Solo si es correcto
+                if (isGroupComplete && !isErr) {
+                    classes += "completed-group-anim ";
+                }
+
+                if (isSel) classes += "bg-red-600/40 text-white shadow-[inset_0_0_10px_rgba(255,0,0,0.5)] z-10 ";
                 else if (isErr) classes += "bg-red-900/50 text-red-200 ";
                 else if (isSameNum) classes += "bg-red-500/20 text-white ";
-                else if (isRelated) classes += "bg-white/5 ";
+                else if (isRelated) classes += "bg-white/5 "; 
                 else classes += "bg-transparent ";
 
                 if (isInit) classes += "text-zinc-500 ";
