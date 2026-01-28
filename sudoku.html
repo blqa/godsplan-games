@@ -488,6 +488,7 @@
             return true;
         };
 
+        // Basic solver for filling the board
         const solveSudoku = (board) => {
             for (let row = 0; row < 9; row++) {
                 for (let col = 0; col < 9; col++) {
@@ -506,8 +507,49 @@
             return true;
         };
 
+        // --- NUEVA FUNCIÓN CRÍTICA: Contador de Soluciones ---
+        // Esto verifica si el tablero tiene más de una solución
+        const countSolutions = (board) => {
+            let count = 0;
+            const solve = (bd) => {
+                let row = -1;
+                let col = -1;
+                let isEmpty = false;
+                
+                // Buscar celda vacía
+                for(let i=0; i<9; i++){
+                    for(let j=0; j<9; j++){
+                        if(bd[i][j] === 0){
+                            row = i; col = j;
+                            isEmpty = true;
+                            break;
+                        }
+                    }
+                    if(isEmpty) break;
+                }
+
+                if (!isEmpty) {
+                    count++;
+                    return;
+                }
+
+                for (let num = 1; num <= 9; num++) {
+                    if (isValid(bd, row, col, num)) {
+                        bd[row][col] = num;
+                        solve(bd);
+                        bd[row][col] = 0;
+                        if (count > 1) return; // Si ya encontramos 2 soluciones, paramos (no es único)
+                    }
+                }
+            }
+            solve(board.map(r => [...r])); // Usamos una copia para no romper el original
+            return count;
+        };
+
         const generateSudoku = (difficulty, rng = Math.random) => {
             const board = Array.from({ length: 9 }, () => Array(9).fill(BLANK));
+            
+            // 1. Llenar diagonales primero (cajas independientes)
             const fillBox = (board, rowStart, colStart, rng) => {
                 let num;
                 const isSafeInBox = (board, r, c, n) => {
@@ -522,23 +564,45 @@
                 }
             };
             for (let i = 0; i < 9; i = i + 3) fillBox(board, i, i, rng);
+            
+            // 2. Resolver para llenar el resto
             solveSudoku(board);
             const solution = board.map(row => [...row]);
 
+            // 3. Definir cuántos borrar (Dificultad)
             let attempts = 30; // Easy
-            if (difficulty === 'medium') attempts = 45;
-            if (difficulty === 'hard') attempts = 55;
-            if (difficulty === 'insane') attempts = 62;
+            if (difficulty === 'medium') attempts = 40;
+            if (difficulty === 'hard') attempts = 50;
+            if (difficulty === 'insane') attempts = 58;
 
-            let count = attempts;
-            while (count > 0) {
-                let row = Math.floor(rng() * 9);
-                let col = Math.floor(rng() * 9);
-                if (board[row][col] !== BLANK) {
-                    board[row][col] = BLANK;
-                    count--;
+            // 4. Crear lista de celdas y mezclarlas
+            let cells = [];
+            for(let r=0; r<9; r++) for(let c=0; c<9; c++) cells.push([r,c]);
+            
+            // Fisher-Yates shuffle
+            for (let i = cells.length - 1; i > 0; i--) {
+                const j = Math.floor(rng() * (i + 1));
+                [cells[i], cells[j]] = [cells[j], cells[i]];
+            }
+
+            // 5. Borrar números asegurando unicidad
+            for (let [r, c] of cells) {
+                if (attempts <= 0) break;
+
+                let backup = board[r][c];
+                board[r][c] = BLANK; // Intentar borrar
+
+                // CHECK CRÍTICO: ¿Sigue siendo único?
+                // Copiamos el tablero para que el validador no lo modifique
+                const solutionsCount = countSolutions(board);
+
+                if (solutionsCount !== 1) {
+                    board[r][c] = backup; // No es único, devolver el número
+                } else {
+                    attempts--; // Éxito, número borrado
                 }
             }
+            
             return { initial: board, solution };
         };
 
