@@ -2,7 +2,7 @@
 
 Colección de juegos web de God's Plan.
 
-**Sitio:** https://games.godsplan.site
+**Sitio:** https://games.godsplan.dev
 
 ## Qué incluye
 
@@ -23,5 +23,5 @@ No necesita instalación: abre `index.html` en el navegador (usa librerías por 
 
 ---
 
-Un producto de **[God's Plan](https://godsplan.site)** · agencia de proyectos.
-Contacto: [contacto@godsplan.site](mailto:contacto@godsplan.site)
+Un producto de **[God's Plan](https://godsplan.dev)** · agencia de proyectos.
+Contacto: [contacto@godsplan.dev](mailto:contacto@godsplan.dev)
